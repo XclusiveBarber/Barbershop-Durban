@@ -3,13 +3,8 @@
 /**
  * Login Page
  *
- * Customer flow  → phone number → OTP → (new: enter name) → redirect
- * Staff access   → shown via "Staff Portal" link (dev only)
- *
- * TODO: Supabase
- * - handleSendOtp   → supabase.auth.signInWithOtp({ phone })
- * - handleVerifyOtp → supabase.auth.verifyOtp({ phone, token, type: 'sms' })
- *   then fetch/create row in `profiles` table
+ * Customer flow  → phone number → Supabase OTP → (new user: enter name) → redirect
+ * Staff access   → shown via "Staff Portal" link (uses profiles table role)
  */
 
 import React, { useState, Suspense } from "react";
@@ -25,17 +20,7 @@ import { toast, Toaster } from "sonner";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth, type AuthUser, type UserRole } from "@/context/auth-context";
-
-// ─── OTP code helper ──────────────────────────────────────────────────────────
-
-function sendMockOtp(phone: string): string {
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  toast.info(`OTP for ${phone}: ${code}`, {
-    description: "Test code — replace with real SMS (Supabase Auth) in production.",
-    duration: 30000,
-  });
-  return code;
-}
+import { supabase } from "@/lib/supabase/client";
 
 // ─── Main component (wraps content in Suspense for useSearchParams) ──────────
 
@@ -58,78 +43,138 @@ function LoginContent() {
   const returnTo     = searchParams.get("returnTo") ?? "/dashboard";
   const { login }    = useAuth();
 
-  // Which portal
   const [mode, setMode] = useState<LoginMode>("customer");
 
   // Customer OTP flow
   const [step, setStep]       = useState<Step>("entry");
   const [phone, setPhone]     = useState("");
   const [otp, setOtp]         = useState("");
-  const [_mockOtp, setMockOtp] = useState("");
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Staff form (dev only)
+  // Staff form (dev / internal)
   const [staffName, setStaffName] = useState("");
   const [staffRole, setStaffRole] = useState<UserRole>("barber");
 
   // ── Customer flow ────────────────────────────────────────────────────────
 
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     if (!phone.trim()) { toast.error("Enter a phone number"); return; }
     setLoading(true);
-    // TODO: Supabase → supabase.auth.signInWithOtp({ phone })
-    const code = sendMockOtp(phone);
-    setMockOtp(code);
-    setTimeout(() => { setLoading(false); setStep("otp"); }, 600);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ phone: phone.trim() });
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success("Code sent! Check your SMS.");
+        setStep("otp");
+      }
+    } catch {
+      toast.error("Failed to send code. Try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = async () => {
     if (otp.length < 6) { toast.error("Enter the 6-digit code"); return; }
     setLoading(true);
-    // TODO: Supabase → supabase.auth.verifyOtp({ phone, token: otp, type: 'sms' })
-    //   then check `profiles` table; if no row → ask for name (step = "name")
-    setTimeout(() => {
-      setLoading(false);
-      const existingProfile = typeof window !== "undefined"
-        ? localStorage.getItem(`xclusiveProfile:${phone}`)
-        : null;
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: phone.trim(),
+        token: otp,
+        type: "sms",
+      });
 
-      if (existingProfile) {
-        const profile = JSON.parse(existingProfile) as { name: string };
-        finaliseLogin({ id: `mock-${Date.now()}`, name: profile.name, phone, role: "customer" });
+      if (error) {
+        toast.error(error.message);
+        setLoading(false);
+        return;
+      }
+
+      // Check if profile exists
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, role")
+        .eq("id", data.user!.id)
+        .single();
+
+      if (profile?.full_name) {
+        // Returning user — go straight to dashboard
+        const authUser: AuthUser = {
+          id: data.user!.id,
+          name: profile.full_name,
+          phone: phone.trim(),
+          role: (profile.role as UserRole) ?? "customer",
+          accessToken: data.session?.access_token,
+        };
+        login(authUser);
+        toast.success(`Welcome back, ${profile.full_name}!`);
+        router.push(returnTo);
       } else {
+        // New user — ask for name
         setStep("name");
       }
-    }, 700);
-  };
-
-  const handleSaveName = () => {
-    if (!newName.trim()) { toast.error("Please enter your name"); return; }
-    // TODO: Supabase → upsert into `profiles` (id, name, phone, role: 'customer')
-    localStorage.setItem(`xclusiveProfile:${phone}`, JSON.stringify({ name: newName.trim() }));
-    finaliseLogin({ id: `mock-${Date.now()}`, name: newName.trim(), phone, role: "customer" });
-  };
-
-  const finaliseLogin = (userData: AuthUser) => {
-    login(userData);
-    toast.success(`Welcome, ${userData.name}!`);
-    router.push(returnTo);
-  };
-
-  // ── Staff flow (dev / internal) ──────────────────────────────────────────
-
-  const handleStaffLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!staffName.trim()) { toast.error("Enter your name"); return; }
-    setLoading(true);
-    // TODO: Supabase → staff log in via email/password, check `profiles`.role
-    setTimeout(() => {
-      login({ id: `staff-${Date.now()}`, name: staffName.trim(), phone: "", role: staffRole });
-      toast.success(`Welcome, ${staffName.trim()}!`);
-      router.push("/dashboard");
+    } catch {
+      toast.error("Verification failed. Try again.");
+    } finally {
       setLoading(false);
-    }, 500);
+    }
+  };
+
+  const handleSaveName = async () => {
+    if (!newName.trim()) { toast.error("Please enter your name"); return; }
+    setLoading(true);
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) { toast.error("Session expired. Please sign in again."); return; }
+
+      // Upsert profile
+      await supabase.from("profiles").upsert({
+        id: authUser.id,
+        full_name: newName.trim(),
+        role: "customer",
+      });
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const userData: AuthUser = {
+        id: authUser.id,
+        name: newName.trim(),
+        phone: phone.trim(),
+        role: "customer",
+        accessToken: session?.access_token,
+      };
+      login(userData);
+      toast.success(`Welcome, ${newName.trim()}!`);
+      router.push(returnTo);
+    } catch {
+      toast.error("Failed to save profile. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Staff flow (uses profiles table, barbers don't have separate login) ──
+
+  const handleStaffLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phone.trim()) { toast.error("Enter your phone number"); return; }
+    setLoading(true);
+    try {
+      // Staff authenticate via phone OTP like customers — role is in profiles table
+      const { error } = await supabase.auth.signInWithOtp({ phone: phone.trim() });
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success("Code sent to your phone.");
+        setStep("otp");
+        setMode("customer"); // reuse customer OTP step
+      }
+    } catch {
+      toast.error("Failed to send code.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -162,7 +207,6 @@ function LoginContent() {
       <div className="flex-1 flex items-center justify-center px-6 py-20">
         <div className="w-full max-w-md">
 
-          {/* Mode switcher (only shown when in customer mode — staff link at bottom) */}
           {mode === "customer" && (
             <AnimatePresence mode="wait">
 
@@ -249,7 +293,6 @@ function LoginContent() {
                         Change
                       </button>
                     </p>
-                    <p className="text-black/30 text-xs mt-2">(Check the notification at the top for the test code.)</p>
                   </div>
 
                   <div className="space-y-4">
@@ -328,10 +371,12 @@ function LoginContent() {
 
                     <button
                       onClick={handleSaveName}
-                      disabled={!newName.trim()}
+                      disabled={!newName.trim() || loading}
                       className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      Create Account <ChevronRight className="w-4 h-4" />
+                      {loading ? "Saving…" : (
+                        <>Create Account <ChevronRight className="w-4 h-4" /></>
+                      )}
                     </button>
                   </div>
                 </motion.div>
@@ -340,7 +385,7 @@ function LoginContent() {
             </AnimatePresence>
           )}
 
-          {/* Staff portal */}
+          {/* Staff portal — staff use same phone OTP, role comes from profiles table */}
           {mode === "staff" && (
             <motion.div
               key="staff"
@@ -356,46 +401,31 @@ function LoginContent() {
                   Staff Sign In
                 </h1>
                 <p className="text-black/50 text-sm leading-relaxed">
-                  For barbers and admin only.
+                  Sign in with your registered phone number.
                 </p>
               </div>
 
               <form onSubmit={handleStaffLogin} className="space-y-6">
                 <div className="space-y-2">
-                  <label className="block text-xs uppercase tracking-widest text-black/40 font-medium">Name</label>
+                  <label className="block text-xs uppercase tracking-widest text-black/40 font-medium">Phone Number</label>
                   <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
                     <input
-                      type="text"
-                      value={staffName}
-                      onChange={(e) => setStaffName(e.target.value)}
-                      placeholder="Your name"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+27 67 886 4334"
                       className="w-full pl-12 pr-4 py-4 border-2 border-black/10 text-black placeholder:text-black/20 focus:border-black focus:outline-none transition-all bg-white"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-xs uppercase tracking-widest text-black/40 font-medium">Role</label>
-                  <div className="relative">
-                    <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
-                    <select
-                      value={staffRole}
-                      onChange={(e) => setStaffRole(e.target.value as UserRole)}
-                      className="w-full pl-12 pr-4 py-4 border-2 border-black/10 text-black focus:border-black focus:outline-none transition-all bg-white appearance-none"
-                    >
-                      <option value="barber">Barber</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                </div>
-
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !phone.trim()}
                   className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? "Signing in…" : "Sign In"}
+                  {loading ? "Sending code…" : "Send Code"}
                 </button>
               </form>
             </motion.div>
@@ -410,7 +440,7 @@ function LoginContent() {
               </a>
             </p>
             <button
-              onClick={() => setMode(mode === "customer" ? "staff" : "customer")}
+              onClick={() => { setMode(mode === "customer" ? "staff" : "customer"); setStep("entry"); }}
               className="text-[11px] uppercase tracking-[0.2em] text-black/20 hover:text-black/40 transition-colors"
             >
               {mode === "customer" ? "Staff Portal →" : "← Customer"}

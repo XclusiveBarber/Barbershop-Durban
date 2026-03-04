@@ -1,32 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '@/lib/supabase/client';
 
 export async function POST(request: NextRequest) {
   try {
     const { phone } = await request.json();
 
     if (!phone) {
-      return NextResponse.json(
-        { error: 'Phone number is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Phone number is required' }, { status: 400 });
     }
 
-    // Generate 6-digit OTP (mock - database disabled)
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    console.log(`[v0] Mock OTP for ${phone}: ${code}`);
+    const supabase = createServerSupabaseClient();
+    const { error } = await supabase.auth.signInWithOtp({ phone });
 
-    return NextResponse.json({ 
-      success: true,
-      message: 'OTP sent successfully',
-      // Include code for testing (no real SMS or database)
-      code
-    });
+    if (error) {
+      console.error('[send-otp] Supabase error:', error.message);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, message: 'OTP sent successfully' });
   } catch (error) {
-    console.error('[v0] Send OTP error:', error);
-    return NextResponse.json(
-      { error: 'Failed to send OTP' },
-      { status: 500 }
-    );
+    console.error('[send-otp] Unexpected error:', error);
+    return NextResponse.json({ error: 'Failed to send OTP' }, { status: 500 });
   }
 }

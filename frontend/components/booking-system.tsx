@@ -1,23 +1,20 @@
 "use client";
 
-
 /**
  * BookingSystem — 4-step booking wizard
  *
- * Step 1  Service selection
+ * Step 1  Service selection (fetched from Supabase haircuts table)
  * Step 2  Date & time selection
- * Step 3  Identity gate  ← smart: skipped/pre-filled if already logged in
- *   3a  choose   → show two paths: "Sign in" or "Continue as guest"
+ * Step 3  Identity gate
+ *   3a  choose   → "Sign in" or "Continue as guest"
  *   3b  phone    → enter phone for OTP
- *   3c  otp      → enter the 6-digit code
- *   3d  name     → new user: enter their name (phone already known)
- *   3e  guest    → enter name + phone, no account
+ *   3c  otp      → enter 6-digit code
+ *   3d  name     → new user: enter name
+ *   3e  guest    → name + phone, no account
  * Step 4  Confirmation
- *
- * TODO: Supabase wiring is marked inline.
  */
 
-import React, { use, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Calendar as CalendarIcon,
@@ -36,15 +33,20 @@ import { DayPicker } from "react-day-picker";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useAuth, type AuthUser } from "@/context/auth-context";
+import { supabase } from "@/lib/supabase/client";
 
-// ─── Static data ──────────────────────────────────────────────────────────────
-//FETCH HAIRCUTS FROM SUPABASE BACKEND
-const [services,setServices] = [useState<any[]>([});
-const [loading,setloading] = [useState(true)];
+// ─── Types ────────────────────────────────────────────────────────────────────
 
+interface Haircut {
+  id: string;
+  name: string;
+  price: number;
+  description: string | null;
+  image_url: string | null;
+}
 
-
-
+type AuthMode   = "choose" | "phone" | "otp" | "name" | "guest";
+type BookerInfo = { name: string; phone: string; isGuest: boolean };
 
 const timeSlots = [
   "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
@@ -52,33 +54,15 @@ const timeSlots = [
   "05:00 PM", "06:00 PM",
 ];
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type Service    = typeof services[number];
-type AuthMode   = "choose" | "phone" | "otp" | "name" | "guest";
-type BookerInfo = { name: string; phone: string; isGuest: boolean };
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Generate a mock OTP and show it in a toast so you can test without real SMS */
-function sendMockOtp(phone: string): string {
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  toast.info(`OTP for ${phone}: ${code}`, {
-    description: "This is a test code — replace with real SMS in production.",
-    duration: 30000,
-  });
-  return code;
+function formatPrice(price: number): string {
+  return `R ${price.toFixed(2)}`;
 }
 
 // ─── Step-level sub-components ────────────────────────────────────────────────
 
-function StepHeader({
-  onBack,
-  title,
-}: {
-  onBack?: () => void;
-  title: string;
-}) {
+function StepHeader({ onBack, title }: { onBack?: () => void; title: string }) {
   return (
     <div className="flex items-center justify-between mb-8">
       {onBack ? (
@@ -102,7 +86,7 @@ function BookingSummaryCard({
   date,
   time,
 }: {
-  service: Service;
+  service: Haircut;
   date: Date | undefined;
   time: string | null;
 }) {
@@ -133,7 +117,7 @@ function BookingSummaryCard({
       </div>
       <div className="pt-3 border-t border-black/10 flex justify-between">
         <span className="font-semibold text-sm text-black">Total</span>
-        <span className="font-semibold text-sm text-black">{service.price}</span>
+        <span className="font-semibold text-sm text-black">{formatPrice(service.price)}</span>
       </div>
     </div>
   );
@@ -144,9 +128,13 @@ function BookingSummaryCard({
 export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   const { user, isLoggedIn, login } = useAuth();
 
+  // Services from Supabase
+  const [services, setServices] = useState<Haircut[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+
   // Wizard state
   const [step, setStep]               = useState(1);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedService, setSelectedService] = useState<Haircut | null>(null);
   const [selectedDate, setSelectedDate]       = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime]       = useState<string | null>(null);
 
@@ -154,88 +142,125 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   const [authMode, setAuthMode]   = useState<AuthMode>("choose");
   const [phone, setPhone]         = useState("");
   const [otp, setOtp]             = useState("");
-  const [_mockOtp, setMockOtp]    = useState("");
   const [newName, setNewName]     = useState("");
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
 
-  // Who ended up booking (account or guest)
   const [booker, setBooker] = useState<BookerInfo | null>(null);
+
+  // Fetch haircuts from Supabase on mount
+  useEffect(() => {
+    supabase
+      .from("haircuts")
+      .select("id, name, price, description, image_url")
+      .then(({ data, error }) => {
+        if (!error && data) setServices(data);
+        setServicesLoading(false);
+      });
+  }, []);
 
   const goNext = () => setStep((s) => s + 1);
   const goPrev = () => setStep((s) => s - 1);
 
-  // ── Step 3 helpers ────────────────────────────────────────────────────────
-
-  /** Called when user wants to enter step 3 */
   const enterStep3 = () => {
-    if (isLoggedIn) {
-      // Pre-fill from account, skip the gate entirely
-      setAuthMode("choose"); // reset sub-state in case they come back
-      setStep(3);
-    } else {
-      setAuthMode("choose");
-      setStep(3);
+    setAuthMode("choose");
+    setStep(3);
+  };
+
+  // ── OTP / Auth helpers ────────────────────────────────────────────────────
+
+  const handleSendOtp = async () => {
+    if (!phone.trim()) return;
+    setAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ phone: phone.trim() });
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success(`Code sent to ${phone}`);
+        setAuthMode("otp");
+      }
+    } catch {
+      toast.error("Failed to send code. Try again.");
+    } finally {
+      setAuthLoading(false);
     }
   };
 
-  const handleSendOtp = () => {
-    if (!phone.trim()) return;
-    setAuthLoading(true);
-    // TODO: Supabase — replace with: supabase.auth.signInWithOtp({ phone })
-    const code = sendMockOtp(phone);
-    setMockOtp(code);
-    setTimeout(() => {
-      setAuthLoading(false);
-      setAuthMode("otp");
-    }, 600);
-  };
-
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = async () => {
     if (!otp.trim()) return;
     setAuthLoading(true);
-    // TODO: Supabase — replace with: supabase.auth.verifyOtp({ phone, token: otp, type: 'sms' })
-    //   Then check if profile exists in `profiles` table; if not → go to "name" step
-    setTimeout(() => {
-      setAuthLoading(false);
-      // In mock mode: any 6-digit code works, check if user already has a name stored
-      // For new users we ask for their name; returning users skip straight to confirm
-      const existingUser = typeof window !== "undefined"
-        ? localStorage.getItem(`xclusiveProfile:${phone}`)
-        : null;
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: phone.trim(),
+        token: otp,
+        type: "sms",
+      });
 
-      if (existingUser) {
-        const profile = JSON.parse(existingUser) as { name: string };
+      if (error) {
+        toast.error(error.message);
+        setAuthLoading(false);
+        return;
+      }
+
+      // Check if profile already exists
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, role")
+        .eq("id", data.user!.id)
+        .single();
+
+      if (profile?.full_name) {
         const loggedInUser: AuthUser = {
-          id: `mock-${Date.now()}`,
-          name: profile.name,
-          phone,
-          role: "customer",
+          id: data.user!.id,
+          name: profile.full_name,
+          phone: phone.trim(),
+          role: profile.role ?? "customer",
+          accessToken: data.session?.access_token,
         };
         login(loggedInUser);
-        toast.success(`Welcome back, ${profile.name}!`);
+        toast.success(`Welcome back, ${profile.full_name}!`);
         goNext();
       } else {
         setAuthMode("name");
       }
-    }, 600);
+    } catch {
+      toast.error("Verification failed. Try again.");
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
-  const handleSaveName = () => {
+  const handleSaveName = async () => {
     if (!newName.trim()) return;
-    // Persist profile for next login
-    // TODO: Supabase — upsert into `profiles` table: { id: user.id, name, phone, role: 'customer' }
-    localStorage.setItem(`xclusiveProfile:${phone}`, JSON.stringify({ name: newName.trim() }));
-    const loggedInUser: AuthUser = {
-      id: `mock-${Date.now()}`,
-      name: newName.trim(),
-      phone,
-      role: "customer",
-    };
-    login(loggedInUser);
-    toast.success(`Welcome, ${newName.trim()}!`);
-    goNext();
+    setAuthLoading(true);
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) { toast.error("Session expired."); setAuthLoading(false); return; }
+
+      await supabase.from("profiles").upsert({
+        id: authUser.id,
+        full_name: newName.trim(),
+        role: "customer",
+      });
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const loggedInUser: AuthUser = {
+        id: authUser.id,
+        name: newName.trim(),
+        phone: phone.trim(),
+        role: "customer",
+        accessToken: session?.access_token,
+      };
+      login(loggedInUser);
+      toast.success(`Welcome, ${newName.trim()}!`);
+      goNext();
+    } catch {
+      toast.error("Failed to save profile. Try again.");
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleGuestContinue = () => {
@@ -244,41 +269,44 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
     goNext();
   };
 
-  // ── Submission ────────────────────────────────────────────────────────────
+  // ── Appointment submission ────────────────────────────────────────────────
 
   const handleConfirm = async () => {
     const bookerName  = isLoggedIn ? user!.name  : booker?.name  ?? "";
-    const bookerPhone = isLoggedIn ? user!.phone : booker?.phone ?? "";
-
-    // TODO: Supabase — insert into `appointments` table:
-    // {
-    //   customer_id:   isLoggedIn ? user.id : null,
-    //   customer_name: bookerName,
-    //   customer_phone: bookerPhone,
-    //   service_name:  selectedService!.name,
-    //   service_price: selectedService!.price,
-    //   service_duration: selectedService!.duration,
-    //   appointment_date: format(selectedDate!, 'yyyy-MM-dd'),
-    //   appointment_time: selectedTime,
-    //   status:        'pending',
-    // }
 
     try {
-      await fetch("/api/appointments", {
+      const appointmentData: Record<string, unknown> = {
+        appointment_date: selectedDate ? format(selectedDate, "yyyy-MM-dd") : "",
+        time_slot: selectedTime,
+        haircut_id: selectedService!.id,
+        status: "pending",
+        total_price: selectedService!.price,
+        payment_status: "unpaid",
+      };
+
+      if (isLoggedIn && user) {
+        appointmentData.user_id = user.id;
+      }
+
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (isLoggedIn && user?.accessToken) {
+        headers["Authorization"] = `Bearer ${user.accessToken}`;
+      }
+
+      const res = await fetch("/api/appointments", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          service_name:      selectedService!.name,
-          service_price:     selectedService!.price,
-          service_duration:  selectedService!.duration,
-          appointment_date:  selectedDate ? format(selectedDate, "yyyy-MM-dd") : "",
-          appointment_time:  selectedTime,
-          customer_name:     bookerName,
-          customer_phone:    bookerPhone,
-        }),
+        headers,
+        body: JSON.stringify(appointmentData),
       });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? "Failed to create booking. Please try again.");
+        return;
+      }
     } catch {
-      // Network error — still show confirmation in dev/test
+      toast.error("Network error. Please try again.");
+      return;
     }
 
     toast.success("Booking confirmed! We'll be in touch shortly.");
@@ -317,7 +345,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         )}
 
         <div className="bg-white border border-black/10 overflow-hidden shadow-sm">
-          {/* Progress bar — 4 steps */}
+          {/* Progress bar */}
           <div className="flex border-b border-black/5">
             {(["Service", "Date & Time", "Your Details", "Done"] as const).map((label, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-1 py-3 px-1">
@@ -345,28 +373,40 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   <h3 className="text-2xl font-semibold mb-8 text-black font-montserrat">
                     Choose a Service
                   </h3>
-                  <div className="grid gap-3">
-                    {services.map((service) => (
-                      <button
-                        key={service.id}
-                        onClick={() => { setSelectedService(service); goNext(); }}
-                        className={`flex items-center justify-between p-5 border-2 text-left transition-all hover:border-black group ${
-                          selectedService?.id === service.id
-                            ? "border-black bg-black/[0.02]"
-                            : "border-black/10"
-                        }`}
-                      >
-                        <div>
-                          <p className="font-medium text-base text-black">{service.name}</p>
-                          <p className="text-xs text-black/40 mt-0.5">{service.description} · {service.duration}</p>
-                        </div>
-                        <div className="text-right flex items-center gap-3">
-                          <p className="font-semibold text-base text-black">{service.price}</p>
-                          <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-black" />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+
+                  {servicesLoading ? (
+                    <div className="text-center py-12">
+                      <div className="inline-block w-6 h-6 border-2 border-black/10 border-t-black rounded-full animate-spin" />
+                      <p className="mt-4 text-black/40 text-sm">Loading services…</p>
+                    </div>
+                  ) : services.length === 0 ? (
+                    <p className="text-center text-black/40 py-8">No services available at the moment.</p>
+                  ) : (
+                    <div className="grid gap-3">
+                      {services.map((service) => (
+                        <button
+                          key={service.id}
+                          onClick={() => { setSelectedService(service); goNext(); }}
+                          className={`flex items-center justify-between p-5 border-2 text-left transition-all hover:border-black group ${
+                            selectedService?.id === service.id
+                              ? "border-black bg-black/[0.02]"
+                              : "border-black/10"
+                          }`}
+                        >
+                          <div>
+                            <p className="font-medium text-base text-black">{service.name}</p>
+                            {service.description && (
+                              <p className="text-xs text-black/40 mt-0.5">{service.description}</p>
+                            )}
+                          </div>
+                          <div className="text-right flex items-center gap-3">
+                            <p className="font-semibold text-base text-black">{formatPrice(service.price)}</p>
+                            <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-black" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -433,7 +473,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   transition={{ duration: 0.2 }}
                   className="space-y-6"
                 >
-                  {/* ── Already logged in ─────────────────────────────── */}
+                  {/* Already logged in */}
                   {isLoggedIn && user ? (
                     <>
                       <StepHeader onBack={goPrev} title="Confirm Booking" />
@@ -453,10 +493,9 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                       </button>
                     </>
                   ) : (
-                    /* ── Not logged in — auth gate ─────────────────────── */
+                    /* Not logged in — auth gate */
                     <AnimatePresence mode="wait">
 
-                      {/* Choose path */}
                       {authMode === "choose" && (
                         <motion.div
                           key="gate-choose"
@@ -467,13 +506,10 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         >
                           <StepHeader onBack={goPrev} title="Almost There" />
                           <BookingSummaryCard service={selectedService!} date={selectedDate} time={selectedTime} />
-
                           <p className="text-sm text-black/50 text-center mb-6">
                             How would you like to continue?
                           </p>
-
                           <div className="grid sm:grid-cols-2 gap-4">
-                            {/* Sign in option */}
                             <button
                               onClick={() => setAuthMode("phone")}
                               className="border-2 border-black p-6 text-left hover:bg-black hover:text-white transition-all group"
@@ -484,8 +520,6 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                                 Save this booking to your account. Reschedule or cancel anytime from My Bookings.
                               </p>
                             </button>
-
-                            {/* Guest option */}
                             <button
                               onClick={() => setAuthMode("guest")}
                               className="border-2 border-black/20 p-6 text-left hover:border-black/60 transition-all group"
@@ -500,7 +534,6 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         </motion.div>
                       )}
 
-                      {/* Phone entry */}
                       {authMode === "phone" && (
                         <motion.div
                           key="gate-phone"
@@ -543,7 +576,6 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         </motion.div>
                       )}
 
-                      {/* OTP entry */}
                       {authMode === "otp" && (
                         <motion.div
                           key="gate-otp"
@@ -554,8 +586,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         >
                           <StepHeader onBack={() => setAuthMode("phone")} title="Enter the Code" />
                           <p className="text-sm text-black/50 mb-8 text-center">
-                            Code sent to {phone}.<br />
-                            <span className="text-black/30 text-xs">(Check the notification toast for the test code.)</span>
+                            Code sent to {phone}.
                           </p>
                           <div className="space-y-4 max-w-sm mx-auto">
                             <div className="space-y-2">
@@ -592,7 +623,6 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         </motion.div>
                       )}
 
-                      {/* New user: enter name */}
                       {authMode === "name" && (
                         <motion.div
                           key="gate-name"
@@ -626,16 +656,15 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                             </div>
                             <button
                               onClick={handleSaveName}
-                              disabled={!newName.trim()}
+                              disabled={!newName.trim() || authLoading}
                               className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
                             >
-                              Continue
+                              {authLoading ? "Saving…" : "Continue"}
                             </button>
                           </div>
                         </motion.div>
                       )}
 
-                      {/* Guest: name + phone form */}
                       {authMode === "guest" && (
                         <motion.div
                           key="gate-guest"
@@ -646,7 +675,6 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         >
                           <StepHeader onBack={() => setAuthMode("choose")} title="Your Details" />
                           <BookingSummaryCard service={selectedService!} date={selectedDate} time={selectedTime} />
-
                           <div className="space-y-4">
                             <div className="space-y-2">
                               <label htmlFor="guest-name" className="text-xs uppercase tracking-widest text-black/40 font-medium">Full Name</label>
@@ -731,7 +759,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                       </Link>
                     ) : (
                       <Link
-                        href={`/login?returnTo=/dashboard`}
+                        href="/login?returnTo=/dashboard"
                         className="bg-accent text-accent-foreground px-8 py-3 text-sm uppercase tracking-wider font-semibold hover:opacity-90 transition-all font-montserrat"
                       >
                         Create account to track bookings

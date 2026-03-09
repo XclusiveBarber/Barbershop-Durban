@@ -27,42 +27,34 @@ export interface CreateProfileInput {
 }
 
 /**
- * Send OTP to email via Supabase Auth
+ * Send magic link to email via Supabase Auth
  */
 export async function sendOtp(input: SendOtpInput) {
   const { error } = await supabase.auth.signInWithOtp({
     email: input.email,
+    options: {
+      emailRedirectTo: `${window.location.origin}/auth/callback`,
+    },
   });
 
   if (error) {
-    throw new Error(error.message || 'Failed to send OTP');
+    throw new Error(error.message || 'Failed to send link');
   }
 
   return { success: true };
 }
 
 /**
- * Verify OTP and establish session
+ * Get current authenticated user
  */
-export async function verifyOtp(input: VerifyOtpInput) {
-  const { data, error } = await supabase.auth.verifyOtp({
-    email: input.email,
-    token: input.token,
-    type: 'email',
-  });
+export async function getCurrentUser() {
+  const { data, error } = await supabase.auth.getUser();
 
-  if (error) {
-    throw new Error(error.message || 'Invalid OTP code');
+  if (error || !data.user) {
+    return null;
   }
 
-  if (!data.session || !data.user) {
-    throw new Error('Failed to create session');
-  }
-
-  return {
-    session: data.session,
-    user: data.user,
-  };
+  return data.user;
 }
 
 /**

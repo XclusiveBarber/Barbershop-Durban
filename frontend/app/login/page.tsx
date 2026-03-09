@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Login Page — Email OTP with Supabase
+ * Login Page — Email Magic Link with Supabase
  *
- * Customer flow:  email → OTP → (new: name) → dashboard
- * Staff flow:     email → OTP → check role → dashboard
+ * Customer flow:  email → link (check email) → dashboard
+ * Staff flow:     email → password → check role → dashboard
  */
 
 import React, { useState, Suspense } from "react";
@@ -21,7 +21,7 @@ import { toast, Toaster } from "sonner";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth, type AuthUser, type UserRole } from "@/context/auth-context";
-import { sendOtp, verifyOtp, getProfile, createProfile } from "@/lib/supabase-auth";
+import { sendOtp, getProfile, createProfile } from "@/lib/supabase-auth";
 
 // ─── Main wrapper ─────────────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ export default function LoginPage() {
 // ─── Content ──────────────────────────────────────────────────────────────────
 
 type LoginMode = "customer" | "staff";
-type Step = "email" | "otp" | "name";
+type Step = "email" | "check-email" | "name";
 
 function LoginContent() {
   const router = useRouter();
@@ -47,14 +47,16 @@ function LoginContent() {
   // Mode
   const [mode, setMode] = useState<LoginMode>("customer");
 
-  // Customer OTP flow
-  const [step, setStep] = useState<Step>("email");
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
+  // Customer email link flow
+  const initialStep = (searchParams.get("step") as Step) || "email";
+  const [step, setStep] = useState<Step>(initialStep);
+  const [email, setEmail] = useState(searchParams.get("email") || "");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null);
+  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(
+    searchParams.get("userId") || null
+  );
 
   // Staff flow
   const [staffEmail, setStaffEmail] = useState("");
@@ -64,7 +66,7 @@ function LoginContent() {
 
   // ─ Customer flow ──────────────────────────────────────────────────────────
 
-  const handleSendOtp = async () => {
+  const handleSendLink = async () => {
     if (!email.trim()) {
       setError("Please enter your email");
       return;
@@ -80,56 +82,10 @@ function LoginContent() {
 
     try {
       await sendOtp({ email });
-      setStep("otp");
-      toast.success("Code sent! Check your email.");
+      setStep("check-email");
+      toast.success("Link sent! Check your email.");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to send code";
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (otp.length < 6) {
-      setError("Please enter the 6-digit code");
-      return;
-    }
-
-    setError(null);
-    setLoading(true);
-
-    try {
-      const { user, session } = await verifyOtp({ email, token: otp });
-
-      // Store session token (for API calls)
-      if (session?.access_token) {
-        localStorage.setItem("supabaseToken", session.access_token);
-      }
-
-      setSupabaseUserId(user.id);
-
-      // Check if profile exists
-      const profile = await getProfile(user.id);
-
-      if (profile) {
-        // Existing user
-        const userData: AuthUser = {
-          id: user.id,
-          email,
-          name: profile.full_name || email.split("@")[0],
-          role: profile.role || "customer",
-        };
-        login(userData);
-        toast.success(`Welcome back, ${userData.name}!`);
-        router.push(returnTo);
-      } else {
-        // New user — ask for name
-        setStep("name");
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Invalid code";
+      const message = err instanceof Error ? err.message : "Failed to send link";
       setError(message);
       toast.error(message);
     } finally {
@@ -290,12 +246,12 @@ function LoginContent() {
                     </div>
 
                     <button
-                      onClick={handleSendOtp}
+                      onClick={handleSendLink}
                       disabled={!email.trim() || loading}
                       className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {loading ? "Sending…" : (
-                        <>Send Code <ChevronRight className="w-4 h-4" /></>
+                        <>Send Link <ChevronRight className="w-4 h-4" /></>
                       )}
                     </button>
                   </div>
@@ -308,10 +264,10 @@ function LoginContent() {
                 </motion.div>
               )}
 
-              {/* OTP Step */}
-              {step === "otp" && (
+              {/* Check Email Step */}
+              {step === "check-email" && (
                 <motion.div
-                  key="otp"
+                  key="check-email"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -319,18 +275,19 @@ function LoginContent() {
                 >
                   <div className="text-center mb-12">
                     <span className="text-black/30 uppercase tracking-widest text-xs mb-4 block">
-                      Verification
+                      Check Your Email
                     </span>
                     <h1 className="text-4xl font-light tracking-tight text-black mb-4">
-                      Enter Code
+                      Link Sent!
                     </h1>
                     <p className="text-black/50 text-sm leading-relaxed">
-                      We sent a code to <strong>{email}</strong>
+                      We sent a magic link to <strong>{email}</strong>
+                      <br />
+                      Click the link to sign in.
                       <br />
                       <button
                         onClick={() => {
                           setStep("email");
-                          setOtp("");
                           setError(null);
                         }}
                         className="mt-2 underline text-black/50 hover:text-black transition-colors text-xs"
@@ -352,40 +309,16 @@ function LoginContent() {
                       </motion.div>
                     )}
 
-                    <div className="space-y-2">
-                      <label className="block text-xs uppercase tracking-widest text-black/40 font-medium">
-                        6-digit code
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={6}
-                        value={otp}
-                        onChange={(e) => {
-                          setOtp(e.target.value.replace(/\D/g, ""));
-                          setError(null);
-                        }}
-                        placeholder="000000"
-                        className="w-full text-center text-2xl tracking-[0.5em] py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
-                        onKeyDown={(e) => e.key === "Enter" && otp.length === 6 && !loading && handleVerifyOtp()}
-                        disabled={loading}
-                      />
+                    <div className="p-4 bg-black/5 rounded text-xs text-black/50 text-center">
+                      Didn't receive the email? Check your spam folder or click below to resend.
                     </div>
 
                     <button
-                      onClick={handleVerifyOtp}
-                      disabled={otp.length < 6 || loading}
-                      className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loading ? "Verifying…" : "Verify & Sign In"}
-                    </button>
-
-                    <button
-                      onClick={handleSendOtp}
+                      onClick={handleSendLink}
                       disabled={loading}
                       className="w-full text-xs text-black/40 hover:text-black transition-colors py-2 disabled:opacity-50"
                     >
-                      Resend code
+                      Resend link
                     </button>
                   </div>
                 </motion.div>

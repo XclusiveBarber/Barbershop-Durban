@@ -45,6 +45,23 @@ export async function sendOtp(input: SendOtpInput) {
 }
 
 /**
+ * Verify OTP code entered by the user
+ */
+export async function verifyOtp(input: VerifyOtpInput) {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: input.email,
+    token: input.token,
+    type: 'email',
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Invalid or expired code');
+  }
+
+  return data;
+}
+
+/**
  * Get current authenticated user
  */
 export async function getCurrentUser() {

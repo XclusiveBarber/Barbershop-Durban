@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Login Page — Email Magic Link with Supabase
+ * Login Page — Email OTP with Supabase
  *
- * Customer flow:  email → link (check email) → dashboard
+ * Customer flow:  email → enter 6-digit code → dashboard (or name if new user)
  * Staff flow:     email → password → check role → dashboard
  */
 
@@ -20,8 +20,8 @@ import {
 import { toast, Toaster } from "sonner";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
-import { useAuth, type AuthUser, type UserRole } from "@/context/auth-context";
-import { sendOtp, getProfile, createProfile } from "@/lib/supabase-auth";
+import { useAuth, type AuthUser } from "@/context/auth-context";
+import { sendOtp, verifyOtp, getProfile, createProfile } from "@/lib/supabase-auth";
 
 // ─── Main wrapper ─────────────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ export default function LoginPage() {
 // ─── Content ──────────────────────────────────────────────────────────────────
 
 type LoginMode = "customer" | "staff";
-type Step = "email" | "check-email" | "name";
+type Step = "email" | "otp" | "name";
 
 function LoginContent() {
   const router = useRouter();
@@ -47,10 +47,11 @@ function LoginContent() {
   // Mode
   const [mode, setMode] = useState<LoginMode>("customer");
 
-  // Customer email link flow
+  // Customer OTP flow
   const initialStep = (searchParams.get("step") as Step) || "email";
   const [step, setStep] = useState<Step>(initialStep);
   const [email, setEmail] = useState(searchParams.get("email") || "");
+  const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +67,7 @@ function LoginContent() {
 
   // ─ Customer flow ──────────────────────────────────────────────────────────
 
-  const handleSendLink = async () => {
+  const handleSendOtp = async () => {
     if (!email.trim()) {
       setError("Please enter your email");
       return;
@@ -82,10 +83,56 @@ function LoginContent() {
 
     try {
       await sendOtp({ email });
-      setStep("check-email");
-      toast.success("Link sent! Check your email.");
+      setStep("otp");
+      setOtp("");
+      toast.success("Code sent! Check your email.");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to send link";
+      const message = err instanceof Error ? err.message : "Failed to send code";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp.trim()) {
+      setError("Please enter the verification code");
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const data = await verifyOtp({ email, token: otp.trim() });
+      const user = data.user;
+
+      if (!user) {
+        throw new Error("Verification failed — please try again");
+      }
+
+      // Check if profile exists
+      const profile = await getProfile(user.id);
+
+      if (profile) {
+        // Existing user — log in directly
+        const userData: AuthUser = {
+          id: user.id,
+          email: user.email ?? email,
+          name: profile.full_name ?? "",
+          role: profile.role ?? "customer",
+        };
+        login(userData);
+        toast.success(`Welcome back, ${userData.name}!`);
+        router.push(returnTo);
+      } else {
+        // New user — collect name
+        setSupabaseUserId(user.id);
+        setStep("name");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Invalid or expired code";
       setError(message);
       toast.error(message);
     } finally {
@@ -108,7 +155,6 @@ function LoginContent() {
     setLoading(true);
 
     try {
-      // Create profile in Supabase
       await createProfile({
         id: supabaseUserId,
         email,
@@ -136,7 +182,6 @@ function LoginContent() {
   };
 
   // ─ Staff flow ─────────────────────────────────────────────────────────────
-  // Note: For production, implement proper staff email/password auth via Supabase
 
   const handleStaffLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,7 +195,6 @@ function LoginContent() {
 
     try {
       // TODO: Implement real staff authentication
-      // For now, show placeholder
       toast.error("Staff login requires Supabase configuration");
     } finally {
       setStaffLoading(false);
@@ -208,7 +252,7 @@ function LoginContent() {
                       Sign In
                     </h1>
                     <p className="text-black/50 text-sm leading-relaxed max-w-xs mx-auto">
-                      Enter your email and we'll send a verification code.
+                      Enter your email and we'll send a 6-digit verification code.
                     </p>
                   </div>
 
@@ -246,12 +290,12 @@ function LoginContent() {
                     </div>
 
                     <button
-                      onClick={handleSendLink}
+                      onClick={handleSendOtp}
                       disabled={!email.trim() || loading}
                       className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {loading ? "Sending…" : (
-                        <>Send Link <ChevronRight className="w-4 h-4" /></>
+                        <>Send Code <ChevronRight className="w-4 h-4" /></>
                       )}
                     </button>
                   </div>
@@ -264,10 +308,10 @@ function LoginContent() {
                 </motion.div>
               )}
 
-              {/* Check Email Step */}
-              {step === "check-email" && (
+              {/* OTP Step */}
+              {step === "otp" && (
                 <motion.div
-                  key="check-email"
+                  key="otp"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -278,17 +322,16 @@ function LoginContent() {
                       Check Your Email
                     </span>
                     <h1 className="text-4xl font-light tracking-tight text-black mb-4">
-                      Link Sent!
+                      Enter Code
                     </h1>
                     <p className="text-black/50 text-sm leading-relaxed">
-                      We sent a magic link to <strong>{email}</strong>
-                      <br />
-                      Click the link to sign in.
+                      We sent a 6-digit code to <strong>{email}</strong>
                       <br />
                       <button
                         onClick={() => {
                           setStep("email");
                           setError(null);
+                          setOtp("");
                         }}
                         className="mt-2 underline text-black/50 hover:text-black transition-colors text-xs"
                       >
@@ -309,17 +352,47 @@ function LoginContent() {
                       </motion.div>
                     )}
 
-                    <div className="p-4 bg-black/5 rounded text-xs text-black/50 text-center">
-                      Didn't receive the email? Check your spam folder or click below to resend.
+                    <div className="space-y-2">
+                      <label className="block text-xs uppercase tracking-widest text-black/40 font-medium">
+                        Verification Code
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={otp}
+                        onChange={(e) => {
+                          setOtp(e.target.value.replace(/\D/g, "").slice(0, 6));
+                          setError(null);
+                        }}
+                        placeholder="123456"
+                        className="w-full px-4 py-4 border-2 border-black/10 text-black text-center text-2xl tracking-widest placeholder:text-black/20 focus:border-black focus:outline-none transition-all bg-white"
+                        onKeyDown={(e) => e.key === "Enter" && !loading && handleVerifyOtp()}
+                        disabled={loading}
+                        autoFocus
+                      />
                     </div>
 
                     <button
-                      onClick={handleSendLink}
-                      disabled={loading}
-                      className="w-full text-xs text-black/40 hover:text-black transition-colors py-2 disabled:opacity-50"
+                      onClick={handleVerifyOtp}
+                      disabled={otp.length < 6 || loading}
+                      className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      Resend link
+                      {loading ? "Verifying…" : (
+                        <>Verify <ChevronRight className="w-4 h-4" /></>
+                      )}
                     </button>
+
+                    <div className="p-4 bg-black/5 rounded text-xs text-black/50 text-center">
+                      Didn't receive it? Check your spam folder or{" "}
+                      <button
+                        onClick={handleSendOtp}
+                        disabled={loading}
+                        className="underline hover:text-black transition-colors"
+                      >
+                        resend code
+                      </button>
+                      .
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -374,6 +447,7 @@ function LoginContent() {
                           className="w-full pl-12 pr-4 py-4 border-2 border-black/10 text-black placeholder:text-black/20 focus:border-black focus:outline-none transition-all bg-white"
                           onKeyDown={(e) => e.key === "Enter" && !loading && handleSaveName()}
                           disabled={loading}
+                          autoFocus
                         />
                       </div>
                     </div>

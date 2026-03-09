@@ -3,7 +3,7 @@
 /**
  * Login Page — Email OTP with Supabase
  *
- * Customer flow:  email → enter 6-digit code → dashboard (or name if new user)
+ * Customer flow:  email → enter 8-digit code → dashboard (or name if new user)
  * Staff flow:     email → password → check role → dashboard
  */
 
@@ -252,7 +252,7 @@ function LoginContent() {
                       Sign In
                     </h1>
                     <p className="text-black/50 text-sm leading-relaxed max-w-xs mx-auto">
-                      Enter your email and we'll send a 6-digit verification code.
+                      Enter your email and we'll send an 8-digit verification code.
                     </p>
                   </div>
 
@@ -325,7 +325,7 @@ function LoginContent() {
                       Enter Code
                     </h1>
                     <p className="text-black/50 text-sm leading-relaxed">
-                      We sent a 6-digit code to <strong>{email}</strong>
+                      We sent an 8-digit code to <strong>{email}</strong>
                       <br />
                       <button
                         onClick={() => {
@@ -361,10 +361,10 @@ function LoginContent() {
                         inputMode="numeric"
                         value={otp}
                         onChange={(e) => {
-                          setOtp(e.target.value.replace(/\D/g, "").slice(0, 6));
+                          setOtp(e.target.value.replace(/\D/g, "").slice(0, 8));
                           setError(null);
                         }}
-                        placeholder="123456"
+                        placeholder="12345678"
                         className="w-full px-4 py-4 border-2 border-black/10 text-black text-center text-2xl tracking-widest placeholder:text-black/20 focus:border-black focus:outline-none transition-all bg-white"
                         onKeyDown={(e) => e.key === "Enter" && !loading && handleVerifyOtp()}
                         disabled={loading}
@@ -374,7 +374,7 @@ function LoginContent() {
 
                     <button
                       onClick={handleVerifyOtp}
-                      disabled={otp.length < 6 || loading}
+                      disabled={otp.length < 8 || loading}
                       className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {loading ? "Verifying…" : (

@@ -202,34 +202,53 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
     loadData();
   }, []);
 
-  // Load available time slots when barber and date change
+  // Auto-select barber with least appointments when date changes
   useEffect(() => {
-    if (!selectedBarber || !selectedDate) {
+    if (!selectedDate || barbers.length === 0) {
+      setSelectedBarber(null);
       setAvailableSlots([]);
       return;
     }
 
-    const loadSlots = async () => {
+    const assignBarber = async () => {
       try {
         const dateStr = format(selectedDate, "yyyy-MM-dd");
-        const res = await fetch(
-          `/api/availability?barber_id=${selectedBarber.id}&date=${dateStr}`
+
+        // Fetch appointment count for each barber on this date
+        const barberAppointments = await Promise.all(
+          barbers.map(async (barber) => {
+            const res = await fetch(
+              `/api/availability?barber_id=${barber.id}&date=${dateStr}`
+            );
+            const data = await res.json();
+            return {
+              barber,
+              bookedSlots: data.booked_slots || [],
+            };
+          })
         );
 
-        if (res.ok) {
-          const data = await res.json();
-          setAvailableSlots(data.available_slots || DEFAULT_TIME_SLOTS);
-        } else {
+        // Find barber with least appointments
+        const leastBusyBarber = barberAppointments.reduce((prev, curr) =>
+          curr.bookedSlots.length < prev.bookedSlots.length ? curr : prev
+        );
+
+        setSelectedBarber(leastBusyBarber.barber);
+        setAvailableSlots(DEFAULT_TIME_SLOTS.filter(
+          (slot) => !leastBusyBarber.bookedSlots.includes(slot)
+        ));
+      } catch (error) {
+        console.error("Failed to assign barber:", error);
+        // Fallback to first barber
+        if (barbers.length > 0) {
+          setSelectedBarber(barbers[0]);
           setAvailableSlots(DEFAULT_TIME_SLOTS);
         }
-      } catch (error) {
-        console.error("Failed to load available slots:", error);
-        setAvailableSlots(DEFAULT_TIME_SLOTS);
       }
     };
 
-    loadSlots();
-  }, [selectedBarber, selectedDate]);
+    assignBarber();
+  }, [selectedDate, barbers]);
 
   // ── Step 3 helpers ────────────────────────────────────────────────────────
 
@@ -434,7 +453,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                 </motion.div>
               )}
 
-              {/* ─── Step 2: Barber, Date & Time ──────────────────────── */}
+              {/* ─── Step 2: Date & Time ──────────────────────────── */}
               {step === 2 && (
                 <motion.div
                   key="step2"
@@ -444,34 +463,18 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   transition={{ duration: 0.2 }}
                   className="space-y-6"
                 >
-                  <StepHeader onBack={goPrev} title="Select Barber, Date & Time" />
+                  <StepHeader onBack={goPrev} title="Select Date & Time" />
 
-                  {/* Barber Selection */}
-                  <div className="space-y-4">
-                    <p className="text-xs font-medium uppercase tracking-widest text-black/40">
-                      Choose Your Barber
-                    </p>
-                    {barbers.length === 0 ? (
-                      <div className="text-center py-4 text-black/50">Loading barbers...</div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {barbers.map((barber) => (
-                          <button
-                            key={barber.id}
-                            onClick={() => { setSelectedBarber(barber); setSelectedTime(null); }}
-                            className={`p-4 border-2 text-left transition-all ${
-                              selectedBarber?.id === barber.id
-                                ? "border-black bg-black/[0.02]"
-                                : "border-black/10 hover:border-black"
-                            }`}
-                          >
-                            <p className="font-medium text-black">{barber.name}</p>
-                            <p className="text-xs text-black/40 mt-1">{barber.specialty || "Professional Barber"}</p>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  {/* Auto-assigned barber info */}
+                  {selectedBarber && (
+                    <div className="bg-black/[0.03] border-2 border-black/5 p-4 space-y-2">
+                      <p className="text-[10px] uppercase tracking-widest text-black/30 font-medium">
+                        Barber Assigned
+                      </p>
+                      <p className="font-medium text-black">{selectedBarber.name}</p>
+                      <p className="text-xs text-black/40">{selectedBarber.specialty || "Professional Barber"}</p>
+                    </div>
+                  )}
 
                   <div className="grid md:grid-cols-2 gap-10">
                     <div className="flex justify-center border border-black/10 p-4">
@@ -489,7 +492,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                       </p>
                       <div className="grid grid-cols-2 gap-2">
                         {availableSlots.length === 0 ? (
-                          <p className="col-span-2 text-xs text-black/40 py-4">Select a barber and date</p>
+                          <p className="col-span-2 text-xs text-black/40 py-4">Loading available times...</p>
                         ) : (
                           availableSlots.map((time) => (
                             <button
@@ -507,7 +510,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         )}
                       </div>
                       <button
-                        disabled={!selectedTime || !selectedDate || !selectedBarber}
+                        disabled={!selectedTime || !selectedDate}
                         onClick={enterStep3}
                         className="w-full bg-accent text-accent-foreground py-4 mt-4 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:opacity-90 font-medium text-sm uppercase tracking-wide"
                       >

@@ -254,7 +254,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         options: { shouldCreateUser: true },
       });
       if (error) throw error;
-      toast.success("Check your email for the 6-digit code.");
+      toast.success("Check your email for the 8-digit code.");
       setAuthMode("otp");
     } catch (err: any) {
       toast.error(err.message || "Failed to send code. Try again.");
@@ -264,7 +264,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   };
 
   const handleVerifyOtp = async () => {
-    if (otp.length < 6) return;
+    if (otp.length < 8) return;
     setAuthLoading(true);
     try {
       const { data, error } = await supabase.auth.verifyOtp({
@@ -616,22 +616,22 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                           <div className="space-y-4 max-w-sm mx-auto">
                             <div className="space-y-2">
                               <label className="text-xs uppercase tracking-widest text-black/40 font-medium">
-                                6-digit code
+                                8-digit code
                               </label>
                               <input
                                 type="text"
                                 inputMode="numeric"
-                                maxLength={6}
+                                maxLength={8}
                                 value={otp}
                                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                                placeholder="000000"
+                                placeholder="00000000"
                                 className="w-full text-center text-2xl tracking-[0.5em] py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
                                 onKeyDown={(e) => e.key === "Enter" && handleVerifyOtp()}
                               />
                             </div>
                             <button
                               onClick={handleVerifyOtp}
-                              disabled={otp.length < 6 || authLoading}
+                              disabled={otp.length < 8 || authLoading}
                               className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
                             >
                               {authLoading ? "Verifying…" : "Verify Code"}

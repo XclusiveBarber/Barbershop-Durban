@@ -158,7 +158,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   const [selectedTime, setSelectedTime]       = useState<string | null>(null);
 
   // Auth-gate sub-state
-  const [authMode, setAuthMode]   = useState<AuthMode>("choose");
+  const [authMode, setAuthMode]   = useState<AuthMode>("phone");
   const [phone, setPhone]         = useState("");
   const [otp, setOtp]             = useState("");
   const [_mockOtp, setMockOtp]    = useState("");
@@ -255,11 +255,9 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   /** Called when user wants to enter step 3 */
   const enterStep3 = () => {
     if (isLoggedIn) {
-      // Pre-fill from account, skip the gate entirely
-      setAuthMode("choose"); // reset sub-state in case they come back
       setStep(3);
     } else {
-      setAuthMode("choose");
+      setAuthMode("phone"); // Skip the choice menu, go straight to login
       setStep(3);
     }
   };
@@ -331,15 +329,16 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   // ── Submission ────────────────────────────────────────────────────────────
 
   const handleConfirm = async () => {
-    const bookerName  = isLoggedIn ? user!.name  : booker?.name  ?? "";
-    const bookerPhone = isLoggedIn ? user!.phone : booker?.phone ?? "";
+    if (!isLoggedIn || !user) {
+      toast.error("You must be logged in to confirm your booking.");
+      return;
+    }
 
     try {
       const response = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: isLoggedIn ? user!.id : null,
           barber_id: selectedBarber!.id,
           haircut_id: selectedService!.id,
           appointment_date: selectedDate ? format(selectedDate, "yyyy-MM-dd") : "",
@@ -350,15 +349,14 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
 
       if (!response.ok) {
         const error = await response.json();
-        toast.error(error.error || "Failed to create appointment");
-        return;
+        throw new Error(error.error || "Failed to create appointment");
       }
 
       toast.success("Booking confirmed! We'll be in touch shortly.");
       goNext();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Booking error:", error);
-      toast.error("Failed to create appointment");
+      toast.error(error.message || "Failed to create appointment");
     }
   };
 
@@ -554,50 +552,6 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                     /* ── Not logged in — auth gate ─────────────────────── */
                     <AnimatePresence mode="wait">
 
-                      {/* Choose path */}
-                      {authMode === "choose" && (
-                        <motion.div
-                          key="gate-choose"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.15 }}
-                        >
-                          <StepHeader onBack={goPrev} title="Almost There" />
-                          <BookingSummaryCard service={selectedService!} date={selectedDate} time={selectedTime} />
-
-                          <p className="text-sm text-black/50 text-center mb-6">
-                            How would you like to continue?
-                          </p>
-
-                          <div className="grid sm:grid-cols-2 gap-4">
-                            {/* Sign in option */}
-                            <button
-                              onClick={() => setAuthMode("phone")}
-                              className="border-2 border-black p-6 text-left hover:bg-black hover:text-white transition-all group"
-                            >
-                              <LogIn className="w-6 h-6 mb-3 text-black group-hover:text-white transition-colors" />
-                              <p className="font-semibold text-sm mb-1">Sign in / Create account</p>
-                              <p className="text-xs text-black/50 group-hover:text-white/60 transition-colors leading-relaxed">
-                                Save this booking to your account. Reschedule or cancel anytime from My Bookings.
-                              </p>
-                            </button>
-
-                            {/* Guest option */}
-                            <button
-                              onClick={() => setAuthMode("guest")}
-                              className="border-2 border-black/20 p-6 text-left hover:border-black/60 transition-all group"
-                            >
-                              <User className="w-6 h-6 mb-3 text-black/40 group-hover:text-black transition-colors" />
-                              <p className="font-semibold text-sm mb-1">Continue as guest</p>
-                              <p className="text-xs text-black/40 group-hover:text-black/60 transition-colors leading-relaxed">
-                                Book without an account. We'll confirm by WhatsApp or phone.
-                              </p>
-                            </button>
-                          </div>
-                        </motion.div>
-                      )}
-
                       {/* Phone entry */}
                       {authMode === "phone" && (
                         <motion.div
@@ -607,7 +561,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                           exit={{ opacity: 0, x: -20 }}
                           transition={{ duration: 0.2 }}
                         >
-                          <StepHeader onBack={() => setAuthMode("choose")} title="Enter Your Number" />
+                          <StepHeader onBack={goPrev} title="Enter Your Number" />
                           <p className="text-sm text-black/50 mb-8 text-center">
                             We'll send a one-time code to verify it's you.
                           </p>
@@ -727,56 +681,6 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         </motion.div>
                       )}
 
-                      {/* Guest: name + phone form */}
-                      {authMode === "guest" && (
-                        <motion.div
-                          key="gate-guest"
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <StepHeader onBack={() => setAuthMode("choose")} title="Your Details" />
-                          <BookingSummaryCard service={selectedService!} date={selectedDate} time={selectedTime} />
-
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <label className="text-xs uppercase tracking-widest text-black/40 font-medium">Full Name</label>
-                              <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
-                                <input
-                                  type="text"
-                                  value={guestName}
-                                  onChange={(e) => setGuestName(e.target.value)}
-                                  placeholder="Your name"
-                                  className="w-full pl-12 pr-4 py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
-                                />
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-xs uppercase tracking-widest text-black/40 font-medium">Phone Number</label>
-                              <div className="relative">
-                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
-                                <input
-                                  type="tel"
-                                  value={guestPhone}
-                                  onChange={(e) => setGuestPhone(e.target.value)}
-                                  placeholder="+27 67 886 4334"
-                                  className="w-full pl-12 pr-4 py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
-                                />
-                              </div>
-                            </div>
-                            <button
-                              onClick={handleGuestContinue}
-                              disabled={!guestName.trim() || !guestPhone.trim()}
-                              className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all mt-2"
-                            >
-                              Confirm Appointment
-                            </button>
-                          </div>
-                        </motion.div>
-                      )}
-
                     </AnimatePresence>
                   )}
                 </motion.div>
@@ -836,7 +740,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         setGuestName("");
                         setGuestPhone("");
                         setBooker(null);
-                        setAuthMode("choose");
+                        setAuthMode("phone");
                       }}
                       className="border-2 border-black/10 text-black/50 px-8 py-3 text-sm uppercase tracking-wider font-semibold hover:border-black/30 hover:text-black transition-all font-montserrat"
                     >

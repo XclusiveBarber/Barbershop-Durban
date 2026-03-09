@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
 
 // GET - Fetch appointments with customer, barber and service info
 export async function GET(request: NextRequest) {
@@ -61,17 +63,39 @@ export async function GET(request: NextRequest) {
 // POST - Create a new appointment
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { user_id, barber_id, haircut_id, appointment_date, appointment_time, total_price } = body;
+    // 1. Securely initialize Supabase server client to read cookies
+    const cookieStore = cookies();
+    const supabaseServer = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
 
-    if (!user_id || !barber_id || !haircut_id || !appointment_date || !appointment_time) {
+    // 2. Extract the user securely from the active session
+    const { data: { user }, error: authError } = await supabaseServer.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized. Please log in to book.' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { barber_id, haircut_id, appointment_date, appointment_time, total_price } = body;
+
+    if (!barber_id || !haircut_id || !appointment_date || !appointment_time) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    // 3. Insert the appointment using the VERIFIED user.id
+    const { data, error } = await supabaseServer
       .from('appointments')
       .insert({
-        user_id,
+        user_id: user.id,
         barber_id,
         haircut_id,
         appointment_date,

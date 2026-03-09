@@ -50,28 +50,49 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient(token);
 
     const body = await request.json();
-    const { appointment_date, time_slot, haircut_id, status, total_price, payment_status, user_id } = body;
+    // Support both "appointment_time" (from booking-system) and "time_slot" (legacy)
+    const {
+      appointment_date,
+      appointment_time,
+      time_slot,
+      barber_id,
+      haircut_id,
+      status,
+      total_price,
+      payment_status,
+      user_id,
+    } = body;
 
-    if (!appointment_date || !time_slot) {
-      return NextResponse.json({ error: "appointment_date and time_slot are required" }, { status: 400 });
+    const resolvedTimeSlot = time_slot ?? appointment_time;
+
+    if (!appointment_date || !resolvedTimeSlot) {
+      return NextResponse.json(
+        { error: "appointment_date and appointment_time are required" },
+        { status: 400 }
+      );
     }
 
     const insertData: Record<string, unknown> = {
       appointment_date,
-      time_slot,
+      time_slot: resolvedTimeSlot,
       status: status ?? "pending",
       payment_status: payment_status ?? "unpaid",
     };
 
+    if (barber_id) insertData.barber_id = barber_id;
     if (haircut_id) insertData.haircut_id = haircut_id;
     if (total_price !== undefined) insertData.total_price = total_price;
 
-    // Attach user_id if we have an authenticated user
+    // Attach user_id — prefer explicit value, then verify from token
     if (user_id) {
       insertData.user_id = user_id;
     } else if (token) {
       const { data: { user } } = await supabase.auth.getUser(token);
       if (user) insertData.user_id = user.id;
+    }
+
+    if (!insertData.user_id) {
+      return NextResponse.json({ error: "Unauthorized. Please log in to book." }, { status: 401 });
     }
 
     const { data, error } = await supabase

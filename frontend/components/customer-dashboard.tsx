@@ -9,15 +9,15 @@ import Link from 'next/link';
 import { useAuth, type AuthUser } from '@/context/auth-context';
 
 interface Appointment {
-  id: string;
+  id: number;
+  service_name: string;
+  service_price: string;
+  service_duration: string;
   appointment_date: string;
-  time_slot: string;
+  appointment_time: string;
   status: string;
-  total_price: number | null;
-  payment_status: string | null;
+  barber_name: string;
   created_at: string;
-  haircuts: { name: string; price: number } | null;
-  barbers: { full_name: string } | null;
 }
 
 export function CustomerDashboard({ user }: { user: AuthUser }) {
@@ -32,30 +32,22 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
 
   const fetchAppointments = async () => {
     try {
-      const headers: Record<string, string> = {};
-      if (user.accessToken) {
-        headers['Authorization'] = `Bearer ${user.accessToken}`;
-      }
-      const response = await fetch('/api/appointments', { headers });
+      const response = await fetch('/api/appointments');
       const data = await response.json();
       if (response.ok) {
-        setAppointments(data.appointments ?? []);
+        setAppointments(data.appointments);
       }
     } catch {
-      // silently handle network errors
+      // silently handle - testing mode
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancelAppointment = async (id: string) => {
+  const handleCancelAppointment = async (id: number) => {
     if (!confirm('Are you sure you want to cancel this appointment?')) return;
     try {
-      const headers: Record<string, string> = {};
-      if (user.accessToken) {
-        headers['Authorization'] = `Bearer ${user.accessToken}`;
-      }
-      const response = await fetch(`/api/appointments/${id}`, { method: 'DELETE', headers });
+      const response = await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
       if (response.ok) {
         toast.success('Appointment cancelled');
         fetchAppointments();
@@ -67,17 +59,13 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = () => {
+    logout();
     router.push('/');
   };
 
-  const upcoming = appointments.filter(
-    (a) => a.status !== 'cancelled'
-  );
-  const past = appointments.filter(
-    (a) => a.status === 'cancelled'
-  );
+  const upcoming = appointments.filter(a => a.status !== 'cancelled' && a.status !== 'completed');
+  const past = appointments.filter(a => a.status === 'completed' || a.status === 'cancelled');
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -157,15 +145,11 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
                     <div key={appointment.id} className="border-2 border-black/10 p-6 hover:border-accent/30 transition-colors">
                       <div className="flex justify-between items-start mb-6">
                         <div>
-                          <h3 className="text-lg font-light mb-1">
-                            {appointment.haircuts?.name ?? 'Appointment'}
-                          </h3>
-                          {appointment.barbers?.full_name && (
-                            <p className="text-xs text-black/40">with {appointment.barbers.full_name}</p>
-                          )}
+                          <h3 className="text-lg font-light mb-1">{appointment.service_name}</h3>
+                          <p className="text-xs text-black/40">with {appointment.barber_name}</p>
                         </div>
                         <span className={`px-3 py-1 text-[10px] uppercase tracking-widest font-medium ${
-                          appointment.status === 'approved'
+                          appointment.status === 'confirmed'
                             ? 'bg-accent text-accent-foreground'
                             : 'bg-black/5 text-black/40'
                         }`}>
@@ -180,13 +164,9 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
                         </div>
                         <div className="flex items-center gap-3 text-sm text-black/60">
                           <Clock className="w-4 h-4 text-black/30" />
-                          {appointment.time_slot}
+                          {appointment.appointment_time} ({appointment.service_duration})
                         </div>
-                        {appointment.total_price != null && (
-                          <div className="text-sm font-medium">
-                            R {appointment.total_price.toFixed(2)}
-                          </div>
-                        )}
+                        <div className="text-sm font-medium">{appointment.service_price}</div>
                       </div>
 
                       <div className="flex gap-3 pt-6 border-t border-black/5">
@@ -209,7 +189,7 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
               )}
             </section>
 
-            {/* Cancelled / History */}
+            {/* Past */}
             {past.length > 0 && (
               <section>
                 <span className="text-black/40 uppercase tracking-widest text-xs mb-6 block">History</span>
@@ -226,13 +206,15 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
                     <tbody>
                       {past.map((appointment) => (
                         <tr key={appointment.id} className="border-b border-black/5 hover:bg-black/[0.02]">
-                          <td className="px-6 py-4 text-sm">{appointment.haircuts?.name ?? '—'}</td>
-                          <td className="px-6 py-4 text-sm text-black/40">{appointment.barbers?.full_name ?? '—'}</td>
+                          <td className="px-6 py-4 text-sm">{appointment.service_name}</td>
+                          <td className="px-6 py-4 text-sm text-black/40">{appointment.barber_name}</td>
                           <td className="px-6 py-4 text-sm text-black/40">
                             {format(new Date(appointment.appointment_date), 'MMM d, yyyy')}
                           </td>
                           <td className="px-6 py-4">
-                            <span className="text-[10px] uppercase tracking-widest text-black/20">
+                            <span className={`text-[10px] uppercase tracking-widest ${
+                              appointment.status === 'completed' ? 'text-black/40' : 'text-black/20'
+                            }`}>
                               {appointment.status}
                             </span>
                           </td>

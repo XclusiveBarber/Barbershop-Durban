@@ -56,18 +56,18 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
 
           {/* Logo */}
-          <a href="/" className="flex items-center gap-3 group">
+          <Link href="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 flex items-center justify-center">
               <img src="/logo.png" alt="Xclusive Barber Logo" className="w-full h-full object-contain" />
             </div>
             <span className="text-xl md:text-2xl font-semibold tracking-tight text-white font-montserrat transition-colors">
               XCLUSIVE BARBER
             </span>
-          </a>
+          </Link>
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-8 text-[15px] font-semibold text-white font-montserrat">
-            <a href="/" className="hover:text-neutral-400 transition-colors">Home</a>
+            <Link href="/" className="hover:text-neutral-400 transition-colors">Home</Link>
             <a href="#services" className="hover:text-neutral-400 transition-colors">Services</a>
             <a href="#location" className="hover:text-neutral-400 transition-colors">Location</a>
 
@@ -169,9 +169,9 @@ export default function App() {
             )}
 
             <div className="pt-16 px-8 flex flex-col gap-7 text-lg font-semibold text-accent-foreground font-montserrat flex-1">
-              <a href="/" onClick={() => setMobileMenuOpen(false)} className="hover:opacity-70 transition-opacity">
+              <Link href="/" onClick={() => setMobileMenuOpen(false)} className="hover:opacity-70 transition-opacity">
                 Home
-              </a>
+              </Link>
               <a href="#services" onClick={() => setMobileMenuOpen(false)} className="hover:opacity-70 transition-opacity">
                 Services
               </a>

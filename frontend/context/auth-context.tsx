@@ -54,72 +54,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize: sync with Supabase session, then fall back to localStorage
+  // Initialize via onAuthStateChange — INITIAL_SESSION fires on mount with current session,
+  // SIGNED_IN fires after OTP/login, TOKEN_REFRESHED keeps the token fresh.
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
 
-    const syncSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          // Active Supabase session — load profile
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("full_name, role")
-            .eq("id", session.user.id)
-            .single();
-
-          if (profile?.full_name) {
-            const u: AuthUser = {
-              id: session.user.id,
-              email: session.user.email!,
-              name: profile.full_name,
-              role: (profile.role as UserRole) || "customer",
-            };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-            localStorage.setItem(TOKEN_KEY, session.access_token);
-            setUser(u);
-            setAccessToken(session.access_token);
-            setIsLoading(false);
-            return;
-          }
-        }
-      } catch {
-        // ignore — fall through to localStorage
-      }
-
-      // Fall back to localStorage
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        const storedToken = localStorage.getItem(TOKEN_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed.id && parsed.email && parsed.name) {
-            setUser(parsed);
-            setAccessToken(storedToken);
-          }
-        }
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(TOKEN_KEY);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    syncSession();
-
-    // Listen for auth state changes (e.g. session expiry, sign-out, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_OUT") {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(TOKEN_KEY);
         setUser(null);
         setAccessToken(null);
-      } else if (event === "TOKEN_REFRESHED" && session) {
-        // Update the stored token when it refreshes
+        setIsLoading(false);
+        return;
+      }
+
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") && session) {
         localStorage.setItem(TOKEN_KEY, session.access_token);
         setAccessToken(session.access_token);
+
+        // Load profile from DB
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, role")
+          .eq("id", session.user.id)
+          .single();
+
+        if (profile?.full_name) {
+          const u: AuthUser = {
+            id: session.user.id,
+            email: session.user.email!,
+            name: profile.full_name,
+            role: (profile.role as UserRole) || "customer",
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+          setUser(u);
+          setIsLoading(false);
+          return;
+        }
+
+        // Profile not ready yet — fall back to whatever is in localStorage
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.id && parsed.email && parsed.name) {
+              setUser(parsed);
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // INITIAL_SESSION with no session — fall back to localStorage
+      if (event === "INITIAL_SESSION" && !session) {
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          const storedToken = localStorage.getItem(TOKEN_KEY);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.id && parsed.email && parsed.name) {
+              setUser(parsed);
+              setAccessToken(storedToken);
+            }
+          }
+        } catch {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(TOKEN_KEY);
+        }
+        setIsLoading(false);
       }
     });
 

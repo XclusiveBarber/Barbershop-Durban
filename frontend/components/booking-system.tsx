@@ -19,7 +19,7 @@ import {
   CheckCircle,
   ArrowRight,
   ChevronLeft,
-  Phone,
+  Mail,
   LogIn,
   UserCheck,
   Scissors,
@@ -29,6 +29,7 @@ import { DayPicker } from "react-day-picker";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useAuth, type AuthUser } from "@/context/auth-context";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -55,20 +56,7 @@ const DEFAULT_TIME_SLOTS = [
 
 // ─── More Types ──────────────────────────────────────────────────────────────
 
-type AuthMode   = "choose" | "phone" | "otp" | "name" | "guest";
-type BookerInfo = { name: string; phone: string; isGuest: boolean };
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Generate a mock OTP and show it in a toast so you can test without real SMS */
-function sendMockOtp(phone: string): string {
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  toast.info(`OTP for ${phone}: ${code}`, {
-    description: "This is a test code — replace with real SMS in production.",
-    duration: 30000,
-  });
-  return code;
-}
+type AuthMode   = "email" | "otp" | "name";
 
 // ─── Step-level sub-components ────────────────────────────────────────────────
 
@@ -158,17 +146,12 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   const [selectedTime, setSelectedTime]       = useState<string | null>(null);
 
   // Auth-gate sub-state
-  const [authMode, setAuthMode]   = useState<AuthMode>("phone");
-  const [phone, setPhone]         = useState("");
+  const [authMode, setAuthMode]   = useState<AuthMode>("email");
+  const [email, setEmail]         = useState("");
   const [otp, setOtp]             = useState("");
-  const [_mockOtp, setMockOtp]    = useState("");
   const [newName, setNewName]     = useState("");
-  const [guestName, setGuestName] = useState("");
-  const [guestPhone, setGuestPhone] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-
-  // Who ended up booking (account or guest)
-  const [booker, setBooker] = useState<BookerInfo | null>(null);
+  const supabase = createSupabaseBrowserClient();
 
   const goNext = () => setStep((s) => s + 1);
   const goPrev = () => setStep((s) => s - 1);
@@ -257,73 +240,97 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
     if (isLoggedIn) {
       setStep(3);
     } else {
-      setAuthMode("phone"); // Skip the choice menu, go straight to login
+      setAuthMode("email");
       setStep(3);
     }
   };
 
-  const handleSendOtp = () => {
-    if (!phone.trim()) return;
+  const handleSendOtp = async () => {
+    if (!email.trim()) return;
     setAuthLoading(true);
-    // TODO: Supabase — replace with: supabase.auth.signInWithOtp({ phone })
-    const code = sendMockOtp(phone);
-    setMockOtp(code);
-    setTimeout(() => {
-      setAuthLoading(false);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: { shouldCreateUser: true },
+      });
+      if (error) throw error;
+      toast.success("Check your email for the 6-digit code.");
       setAuthMode("otp");
-    }, 600);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send code. Try again.");
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
-  const handleVerifyOtp = () => {
-    if (!otp.trim()) return;
+  const handleVerifyOtp = async () => {
+    if (otp.length < 6) return;
     setAuthLoading(true);
-    // TODO: Supabase — replace with: supabase.auth.verifyOtp({ phone, token: otp, type: 'sms' })
-    //   Then check if profile exists in `profiles` table; if not → go to "name" step
-    setTimeout(() => {
-      setAuthLoading(false);
-      // In mock mode: any 6-digit code works, check if user already has a name stored
-      // For new users we ask for their name; returning users skip straight to confirm
-      const existingUser = typeof window !== "undefined"
-        ? localStorage.getItem(`xclusiveProfile:${phone}`)
-        : null;
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: otp,
+        type: "email",
+      });
+      if (error) throw error;
 
-      if (existingUser) {
-        const profile = JSON.parse(existingUser) as { name: string };
+      const authUser = data.user!;
+
+      // Check if profile exists
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, role")
+        .eq("id", authUser.id)
+        .single();
+
+      if (profile?.full_name) {
         const loggedInUser: AuthUser = {
-          id: `mock-${Date.now()}`,
-          name: profile.name,
-          phone,
-          role: "customer",
+          id: authUser.id,
+          email: authUser.email!,
+          name: profile.full_name,
+          role: (profile.role as AuthUser["role"]) || "customer",
         };
         login(loggedInUser);
-        toast.success(`Welcome back, ${profile.name}!`);
+        toast.success(`Welcome back, ${profile.full_name}!`);
         goNext();
       } else {
         setAuthMode("name");
       }
-    }, 600);
+    } catch (err: any) {
+      toast.error(err.message || "Invalid code. Please try again.");
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
-  const handleSaveName = () => {
+  const handleSaveName = async () => {
     if (!newName.trim()) return;
-    // Persist profile for next login
-    // TODO: Supabase — upsert into `profiles` table: { id: user.id, name, phone, role: 'customer' }
-    localStorage.setItem(`xclusiveProfile:${phone}`, JSON.stringify({ name: newName.trim() }));
-    const loggedInUser: AuthUser = {
-      id: `mock-${Date.now()}`,
-      name: newName.trim(),
-      phone,
-      role: "customer",
-    };
-    login(loggedInUser);
-    toast.success(`Welcome, ${newName.trim()}!`);
-    goNext();
-  };
+    setAuthLoading(true);
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Session expired. Please log in again.");
 
-  const handleGuestContinue = () => {
-    if (!guestName.trim() || !guestPhone.trim()) return;
-    setBooker({ name: guestName.trim(), phone: guestPhone.trim(), isGuest: true });
-    goNext();
+      await supabase.from("profiles").upsert({
+        id: authUser.id,
+        email: authUser.email,
+        full_name: newName.trim(),
+        role: "customer",
+      });
+
+      const loggedInUser: AuthUser = {
+        id: authUser.id,
+        email: authUser.email!,
+        name: newName.trim(),
+        role: "customer",
+      };
+      login(loggedInUser);
+      toast.success(`Welcome, ${newName.trim()}!`);
+      goNext();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save your name. Try again.");
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   // ── Submission ────────────────────────────────────────────────────────────
@@ -552,31 +559,31 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                     /* ── Not logged in — auth gate ─────────────────────── */
                     <AnimatePresence mode="wait">
 
-                      {/* Phone entry */}
-                      {authMode === "phone" && (
+                      {/* Email entry */}
+                      {authMode === "email" && (
                         <motion.div
-                          key="gate-phone"
+                          key="gate-email"
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: -20 }}
                           transition={{ duration: 0.2 }}
                         >
-                          <StepHeader onBack={goPrev} title="Enter Your Number" />
+                          <StepHeader onBack={goPrev} title="Enter Your Email" />
                           <p className="text-sm text-black/50 mb-8 text-center">
                             We'll send a one-time code to verify it's you.
                           </p>
                           <div className="space-y-4 max-w-sm mx-auto">
                             <div className="space-y-2">
                               <label className="text-xs uppercase tracking-widest text-black/40 font-medium">
-                                Phone Number
+                                Email Address
                               </label>
                               <div className="relative">
-                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
                                 <input
-                                  type="tel"
-                                  value={phone}
-                                  onChange={(e) => setPhone(e.target.value)}
-                                  placeholder="+27 67 886 4334"
+                                  type="email"
+                                  value={email}
+                                  onChange={(e) => setEmail(e.target.value)}
+                                  placeholder="you@example.com"
                                   className="w-full pl-12 pr-4 py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
                                   onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
                                 />
@@ -584,7 +591,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                             </div>
                             <button
                               onClick={handleSendOtp}
-                              disabled={!phone.trim() || authLoading}
+                              disabled={!email.trim() || authLoading}
                               className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
                             >
                               {authLoading ? "Sending…" : "Send Code"}
@@ -602,10 +609,9 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                           exit={{ opacity: 0, x: -20 }}
                           transition={{ duration: 0.2 }}
                         >
-                          <StepHeader onBack={() => setAuthMode("phone")} title="Enter the Code" />
+                          <StepHeader onBack={() => setAuthMode("email")} title="Enter the Code" />
                           <p className="text-sm text-black/50 mb-8 text-center">
-                            Code sent to {phone}.<br />
-                            <span className="text-black/30 text-xs">(Check the notification toast for the test code.)</span>
+                            Code sent to {email}.
                           </p>
                           <div className="space-y-4 max-w-sm mx-auto">
                             <div className="space-y-2">
@@ -631,10 +637,10 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                               {authLoading ? "Verifying…" : "Verify Code"}
                             </button>
                             <button
-                              onClick={() => { setOtp(""); setAuthMode("phone"); }}
+                              onClick={() => { setOtp(""); setAuthMode("email"); }}
                               className="w-full text-xs text-black/40 hover:text-black transition-colors py-2"
                             >
-                              Wrong number? Go back
+                              Wrong email? Go back
                             </button>
                           </div>
                         </motion.div>
@@ -700,47 +706,31 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   </div>
 
                   <h3 className="text-3xl font-light text-black">
-                    {isLoggedIn ? "Booking Confirmed!" : "Request Received!"}
+                    Booking Confirmed!
                   </h3>
 
                   <p className="text-black/55 max-w-sm mx-auto text-sm leading-relaxed">
-                    {isLoggedIn
-                      ? `Thanks, ${user!.name}. Your ${selectedService?.name} on ${
-                          selectedDate ? format(selectedDate, "EEE, MMM d") : ""
-                        } at ${selectedTime} is confirmed.`
-                      : `Thanks, ${booker?.name ?? ""}. We've received your request for ${selectedService?.name} on ${
-                          selectedDate ? format(selectedDate, "EEE, MMM d") : ""
-                        }. We'll confirm via WhatsApp or call to ${booker?.phone ?? ""}.`}
+                    {`Thanks, ${user?.name ?? ""}. Your ${selectedService?.name} on ${
+                      selectedDate ? format(selectedDate, "EEE, MMM d") : ""
+                    } at ${selectedTime} is confirmed.`}
                   </p>
 
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                    {isLoggedIn ? (
-                      <Link
-                        href="/dashboard"
-                        className="bg-accent text-accent-foreground px-8 py-3 text-sm uppercase tracking-wider font-semibold hover:opacity-90 transition-all font-montserrat"
-                      >
-                        View My Bookings
-                      </Link>
-                    ) : (
-                      <Link
-                        href={`/login?returnTo=/dashboard`}
-                        className="bg-accent text-accent-foreground px-8 py-3 text-sm uppercase tracking-wider font-semibold hover:opacity-90 transition-all font-montserrat"
-                      >
-                        Create account to track bookings
-                      </Link>
-                    )}
+                    <Link
+                      href="/dashboard"
+                      className="bg-accent text-accent-foreground px-8 py-3 text-sm uppercase tracking-wider font-semibold hover:opacity-90 transition-all font-montserrat"
+                    >
+                      View My Bookings
+                    </Link>
                     <button
                       onClick={() => {
                         setStep(1);
                         setSelectedService(null);
                         setSelectedTime(null);
-                        setPhone("");
+                        setEmail("");
                         setOtp("");
                         setNewName("");
-                        setGuestName("");
-                        setGuestPhone("");
-                        setBooker(null);
-                        setAuthMode("phone");
+                        setAuthMode("email");
                       }}
                       className="border-2 border-black/10 text-black/50 px-8 py-3 text-sm uppercase tracking-wider font-semibold hover:border-black/30 hover:text-black transition-all font-montserrat"
                     >

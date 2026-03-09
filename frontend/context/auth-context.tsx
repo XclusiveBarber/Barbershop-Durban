@@ -17,6 +17,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,23 +51,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize from localStorage on mount
+  // Initialize: sync with Supabase session, then fall back to localStorage
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // Validate shape (basic check)
-        if (parsed.id && parsed.email && parsed.name) {
-          setUser(parsed);
+    const supabase = createSupabaseBrowserClient();
+
+    const syncSession = async () => {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          // Active Supabase session — load profile
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name, role")
+            .eq("id", authUser.id)
+            .single();
+
+          if (profile?.full_name) {
+            const u: AuthUser = {
+              id: authUser.id,
+              email: authUser.email!,
+              name: profile.full_name,
+              role: (profile.role as UserRole) || "customer",
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+            setUser(u);
+            setIsLoading(false);
+            return;
+          }
         }
+      } catch {
+        // ignore — fall through to localStorage
       }
-    } catch (e) {
-      // Corrupt or invalid stored data — ignore silently
-      localStorage.removeItem(STORAGE_KEY);
-    } finally {
-      setIsLoading(false);
-    }
+
+      // Fall back to localStorage
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.id && parsed.email && parsed.name) {
+            setUser(parsed);
+          }
+        }
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    syncSession();
+
+    // Listen for auth state changes (e.g. session expiry, sign-out)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        localStorage.removeItem(STORAGE_KEY);
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = (userData: AuthUser) => {
@@ -77,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem(STORAGE_KEY);
     setUser(null);
+    createSupabaseBrowserClient().auth.signOut();
   };
 
   const updateUser = (partial: Partial<Pick<AuthUser, "name">>) => {

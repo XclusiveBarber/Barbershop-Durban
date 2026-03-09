@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     syncSession();
 
     // Listen for auth state changes (e.g. session expiry, sign-out)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
       if (event === "SIGNED_OUT") {
         localStorage.removeItem(STORAGE_KEY);
         setUser(null);

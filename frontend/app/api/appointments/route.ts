@@ -64,23 +64,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // 1. Securely initialize Supabase server client to read cookies
-    const cookieStore = cookies();
-    const supabaseServer = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-        },
-      }
-    );
+    const { createSupabaseServerClient } = await import('@/lib/supabase-server');
+    const supabaseServer = await createSupabaseServerClient();
 
     // 2. Extract the user securely from the active session
     const { data: { user }, error: authError } = await supabaseServer.auth.getUser();
 
     if (authError || !user) {
+      console.error('[auth] POST /api/appointments unauthorized:', authError?.message);
       return NextResponse.json({ error: 'Unauthorized. Please log in to book.' }, { status: 401 });
     }
 

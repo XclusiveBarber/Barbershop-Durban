@@ -27,12 +27,14 @@ export function Hero() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
           <a
             href="/services"
+            suppressHydrationWarning
             className="px-10 py-4 bg-accent text-accent-foreground text-sm uppercase tracking-widest font-bold hover:opacity-90 transition-all shadow-lg font-poppins"
           >
             Book Appointment
           </a>
           <a
             href="#services"
+            suppressHydrationWarning
             className="px-10 py-4 border-2 border-white/30 text-white text-sm uppercase tracking-widest font-semibold hover:bg-white hover:text-black transition-all font-poppins"
           >
             Our Services

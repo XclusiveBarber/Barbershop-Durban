@@ -8,7 +8,9 @@
  * - Create/update profile
  */
 
-import { supabase } from './supabase';
+import { createSupabaseBrowserClient } from './supabase-browser';
+
+const getSupabase = () => createSupabaseBrowserClient();
 
 export interface SendOtpInput {
   email: string;
@@ -30,6 +32,7 @@ export interface CreateProfileInput {
  * Send magic link to email via Supabase Auth
  */
 export async function sendOtp(input: SendOtpInput) {
+  const supabase = getSupabase();
   const { error } = await supabase.auth.signInWithOtp({
     email: input.email,
     options: {
@@ -48,6 +51,7 @@ export async function sendOtp(input: SendOtpInput) {
  * Verify OTP code entered by the user
  */
 export async function verifyOtp(input: VerifyOtpInput) {
+  const supabase = getSupabase();
   const { data, error } = await supabase.auth.verifyOtp({
     email: input.email,
     token: input.token,
@@ -65,6 +69,7 @@ export async function verifyOtp(input: VerifyOtpInput) {
  * Get current authenticated user
  */
 export async function getCurrentUser() {
+  const supabase = getSupabase();
   const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) {
@@ -78,6 +83,7 @@ export async function getCurrentUser() {
  * Fetch user profile from Supabase
  */
 export async function getProfile(userId: string) {
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -99,6 +105,7 @@ export async function getProfile(userId: string) {
  * Create new user profile in Supabase
  */
 export async function createProfile(input: CreateProfileInput) {
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from('profiles')
     .insert({
@@ -121,6 +128,7 @@ export async function createProfile(input: CreateProfileInput) {
  * Update user profile
  */
 export async function updateProfile(userId: string, updates: Partial<CreateProfileInput>) {
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from('profiles')
     .update({
@@ -142,6 +150,7 @@ export async function updateProfile(userId: string, updates: Partial<CreateProfi
  * Sign out and clear session
  */
 export async function signOut() {
+  const supabase = getSupabase();
   const { error } = await supabase.auth.signOut();
 
   if (error) {
@@ -155,6 +164,7 @@ export async function signOut() {
  * Get current session
  */
 export async function getSession() {
+  const supabase = getSupabase();
   const { data, error } = await supabase.auth.getSession();
 
   if (error) {

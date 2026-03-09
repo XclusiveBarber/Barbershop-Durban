@@ -37,11 +37,13 @@ export function Newsletter() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
             required
+            suppressHydrationWarning
             className="flex-1 px-4 py-3 border border-black/20 focus:outline-none focus:ring-2 focus:ring-accent text-sm font-poppins"
           />
           <button
             type="submit"
             disabled={loading}
+            suppressHydrationWarning
             className="px-6 py-3 bg-accent text-accent-foreground text-sm font-semibold uppercase tracking-wider hover:opacity-90 transition-all disabled:opacity-50 font-montserrat"
           >
             {loading ? 'Subscribing...' : 'Subscribe'}

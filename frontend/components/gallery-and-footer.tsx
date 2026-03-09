@@ -238,8 +238,14 @@ export function Gallery() {
 
             {/* Desktop Navigation Buttons */}
             <div className="hidden md:block">
-              <CarouselPrevious className="absolute -left-12 top-1/2 -translate-y-1/2 bg-white/10 text-white border-white/20 hover:bg-white hover:text-black transition-all" />
-              <CarouselNext className="absolute -right-12 top-1/2 -translate-y-1/2 bg-white/10 text-white border-white/20 hover:bg-white hover:text-black transition-all" />
+              <CarouselPrevious 
+                suppressHydrationWarning
+                className="absolute -left-12 top-1/2 -translate-y-1/2 bg-white/10 text-white border-white/20 hover:bg-white hover:text-black transition-all" 
+              />
+              <CarouselNext 
+                suppressHydrationWarning
+                className="absolute -right-12 top-1/2 -translate-y-1/2 bg-white/10 text-white border-white/20 hover:bg-white hover:text-black transition-all" 
+              />
             </div>
           </Carousel>
 
@@ -249,6 +255,7 @@ export function Gallery() {
               <button
                 key={idx}
                 onClick={() => api?.scrollTo(idx)}
+                suppressHydrationWarning
                 className={`h-2 rounded-full transition-all duration-300 ${
                   idx === current
                     ? "bg-white w-8" // Active dot expands

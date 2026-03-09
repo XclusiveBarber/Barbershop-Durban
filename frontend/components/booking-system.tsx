@@ -29,7 +29,7 @@ import { DayPicker } from "react-day-picker";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useAuth, type AuthUser } from "@/context/auth-context";
-import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { OtpLoginForm } from "@/components/otp-login-form";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -55,8 +55,6 @@ const DEFAULT_TIME_SLOTS = [
 ];
 
 // ─── More Types ──────────────────────────────────────────────────────────────
-
-type AuthMode   = "email" | "otp" | "name";
 
 // ─── Step-level sub-components ────────────────────────────────────────────────
 
@@ -145,14 +143,6 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   const [selectedDate, setSelectedDate]       = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime]       = useState<string | null>(null);
 
-  // Auth-gate sub-state
-  const [authMode, setAuthMode]   = useState<AuthMode>("email");
-  const [email, setEmail]         = useState("");
-  const [otp, setOtp]             = useState("");
-  const [newName, setNewName]     = useState("");
-  const [authLoading, setAuthLoading] = useState(false);
-  const supabase = createSupabaseBrowserClient();
-
   const goNext = () => setStep((s) => s + 1);
   const goPrev = () => setStep((s) => s - 1);
 
@@ -237,100 +227,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
 
   /** Called when user wants to enter step 3 */
   const enterStep3 = () => {
-    if (isLoggedIn) {
-      setStep(3);
-    } else {
-      setAuthMode("email");
-      setStep(3);
-    }
-  };
-
-  const handleSendOtp = async () => {
-    if (!email.trim()) return;
-    setAuthLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
-        options: { shouldCreateUser: true },
-      });
-      if (error) throw error;
-      toast.success("Check your email for the 8-digit code.");
-      setAuthMode("otp");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to send code. Try again.");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (otp.length < 8) return;
-    setAuthLoading(true);
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: email.trim(),
-        token: otp,
-        type: "email",
-      });
-      if (error) throw error;
-
-      const authUser = data.user!;
-
-      // Check if profile exists
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, role")
-        .eq("id", authUser.id)
-        .single();
-
-      if (profile?.full_name) {
-        const loggedInUser: AuthUser = {
-          id: authUser.id,
-          email: authUser.email!,
-          name: profile.full_name,
-          role: (profile.role as AuthUser["role"]) || "customer",
-        };
-        login(loggedInUser);
-        toast.success(`Welcome back, ${profile.full_name}!`);
-        goNext();
-      } else {
-        setAuthMode("name");
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Invalid code. Please try again.");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleSaveName = async () => {
-    if (!newName.trim()) return;
-    setAuthLoading(true);
-    try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) throw new Error("Session expired. Please log in again.");
-
-      await supabase.from("profiles").upsert({
-        id: authUser.id,
-        email: authUser.email,
-        full_name: newName.trim(),
-        role: "customer",
-      });
-
-      const loggedInUser: AuthUser = {
-        id: authUser.id,
-        email: authUser.email!,
-        name: newName.trim(),
-        role: "customer",
-      };
-      login(loggedInUser);
-      toast.success(`Welcome, ${newName.trim()}!`);
-      goNext();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save your name. Try again.");
-    } finally {
-      setAuthLoading(false);
-    }
+    setStep(3);
   };
 
   // ── Submission ────────────────────────────────────────────────────────────
@@ -545,7 +442,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         <UserCheck className="w-5 h-5 text-black/40 flex-shrink-0" />
                         <div>
                           <p className="text-sm font-medium text-black">{user.name}</p>
-                          <p className="text-xs text-black/40">{user.phone}</p>
+                          <p className="text-xs text-black/40">{user.email}</p>
                         </div>
                       </div>
                       <button
@@ -557,137 +454,12 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                     </>
                   ) : (
                     /* ── Not logged in — auth gate ─────────────────────── */
-                    <AnimatePresence mode="wait">
-
-                      {/* Email entry */}
-                      {authMode === "email" && (
-                        <motion.div
-                          key="gate-email"
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <StepHeader onBack={goPrev} title="Enter Your Email" />
-                          <p className="text-sm text-black/50 mb-8 text-center">
-                            We'll send a one-time code to verify it's you.
-                          </p>
-                          <div className="space-y-4 max-w-sm mx-auto">
-                            <div className="space-y-2">
-                              <label className="text-xs uppercase tracking-widest text-black/40 font-medium">
-                                Email Address
-                              </label>
-                              <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
-                                <input
-                                  type="email"
-                                  value={email}
-                                  onChange={(e) => setEmail(e.target.value)}
-                                  placeholder="you@example.com"
-                                  className="w-full pl-12 pr-4 py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
-                                  onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
-                                />
-                              </div>
-                            </div>
-                            <button
-                              onClick={handleSendOtp}
-                              disabled={!email.trim() || authLoading}
-                              className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
-                            >
-                              {authLoading ? "Sending…" : "Send Code"}
-                            </button>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* OTP entry */}
-                      {authMode === "otp" && (
-                        <motion.div
-                          key="gate-otp"
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <StepHeader onBack={() => setAuthMode("email")} title="Enter the Code" />
-                          <p className="text-sm text-black/50 mb-8 text-center">
-                            Code sent to {email}.
-                          </p>
-                          <div className="space-y-4 max-w-sm mx-auto">
-                            <div className="space-y-2">
-                              <label className="text-xs uppercase tracking-widest text-black/40 font-medium">
-                                8-digit code
-                              </label>
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                maxLength={8}
-                                value={otp}
-                                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                                placeholder="00000000"
-                                className="w-full text-center text-2xl tracking-[0.5em] py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
-                                onKeyDown={(e) => e.key === "Enter" && handleVerifyOtp()}
-                              />
-                            </div>
-                            <button
-                              onClick={handleVerifyOtp}
-                              disabled={otp.length < 8 || authLoading}
-                              className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
-                            >
-                              {authLoading ? "Verifying…" : "Verify Code"}
-                            </button>
-                            <button
-                              onClick={() => { setOtp(""); setAuthMode("email"); }}
-                              className="w-full text-xs text-black/40 hover:text-black transition-colors py-2"
-                            >
-                              Wrong email? Go back
-                            </button>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* New user: enter name */}
-                      {authMode === "name" && (
-                        <motion.div
-                          key="gate-name"
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <StepHeader onBack={() => setAuthMode("otp")} title="What's Your Name?" />
-                          <p className="text-sm text-black/50 mb-8 text-center">
-                            One last thing — so we know who to expect.
-                          </p>
-                          <div className="space-y-4 max-w-sm mx-auto">
-                            <div className="space-y-2">
-                              <label className="text-xs uppercase tracking-widest text-black/40 font-medium">
-                                Your Name
-                              </label>
-                              <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
-                                <input
-                                  type="text"
-                                  value={newName}
-                                  onChange={(e) => setNewName(e.target.value)}
-                                  placeholder="e.g. Thabo"
-                                  className="w-full pl-12 pr-4 py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
-                                  onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
-                                />
-                              </div>
-                            </div>
-                            <button
-                              onClick={handleSaveName}
-                              disabled={!newName.trim()}
-                              className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
-                            >
-                              Continue
-                            </button>
-                          </div>
-                        </motion.div>
-                      )}
-
-                    </AnimatePresence>
+                    <div className="pt-2">
+                      <OtpLoginForm 
+                        onComplete={() => {}} 
+                        onBackAction={goPrev} 
+                      />
+                    </div>
                   )}
                 </motion.div>
               )}
@@ -727,10 +499,6 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         setStep(1);
                         setSelectedService(null);
                         setSelectedTime(null);
-                        setEmail("");
-                        setOtp("");
-                        setNewName("");
-                        setAuthMode("email");
                       }}
                       className="border-2 border-black/10 text-black/50 px-8 py-3 text-sm uppercase tracking-wider font-semibold hover:border-black/30 hover:text-black transition-all font-montserrat"
                     >

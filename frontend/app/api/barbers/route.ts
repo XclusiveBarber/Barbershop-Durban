@@ -1,25 +1,29 @@
 import { NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    // This pulls the URL from the .env.local file you just created
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const { data, error } = await supabase
+      .from('barbers')
+      .select('*')
+      .eq('available', true);
 
-    // This calls the "GetBarbers" method in your C# BarbersController
-    const response = await fetch(`${backendUrl}/api/barbers`, {
-      cache: 'no-store' // Ensures you always get the latest data
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch barbers from backend');
+    if (error) {
+      console.error('[supabase] Get barbers error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const barbers = await response.json();
-    
-    // Send the real database data back to your frontend UI
+    const barbers = (data ?? []).map((barber: any) => ({
+      id: barber.id,
+      name: barber.full_name,
+      specialty: barber.speciality || 'Barber',
+      image_url: barber.image_url || '/placeholder.svg?height=300&width=300',
+      available: barber.available,
+    }));
+
     return NextResponse.json({ barbers });
   } catch (error) {
-    console.error('Connection error:', error);
-    return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    console.error('[supabase] Get barbers error:', error);
+    return NextResponse.json({ error: 'Failed to fetch barbers' }, { status: 500 });
   }
 }

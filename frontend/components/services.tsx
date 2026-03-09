@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Scissors, Paintbrush, CircleDot, Smile } from "lucide-react";
 
 const serviceCategories = [
@@ -69,12 +68,10 @@ export function Services() {
             {/* Promo image above button on mobile only */}
             <div className="block lg:hidden">
               <div className="relative aspect-[4/5] overflow-hidden rounded-sm shadow-2xl mb-8">
-                <Image
+                <img
                   src="/haircuts/taper.webp"
                   alt="Professional Barber"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover scale-110 transition-all duration-1000 cursor-pointer"
+                  className="w-full h-full object-cover scale-110 transition-all duration-1000 cursor-pointer"
                   onClick={() => setShowModal(true)}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
@@ -88,12 +85,10 @@ export function Services() {
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
                     onClick={() => setShowModal(false)}
                   >
-                    <Image
+                    <img
                       src="/haircuts/taper.webp"
                       alt="Professional Barber Enlarged"
-                      width={800}
-                      height={1000}
-                      className="max-h-[90vh] max-w-[90vw] object-contain rounded shadow-2xl border-4 border-white"
+                      className="max-h-[90vh] max-w-[90vw] rounded shadow-2xl border-4 border-white"
                       onClick={(e) => e.stopPropagation()}
                     />
                     <button
@@ -116,12 +111,10 @@ export function Services() {
           {/* Right: Promo image on desktop only */}
           <div className="hidden lg:block">
             <div className="relative aspect-[4/5] overflow-hidden rounded-sm shadow-2xl">
-              <Image
+              <img
                 src="/haircuts/taper.webp"
                 alt="Professional Barber"
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover scale-110 transition-all duration-1000 cursor-pointer"
+                className="w-full h-full object-cover scale-110 transition-all duration-1000 cursor-pointer"
                 onClick={() => setShowModal(true)}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />

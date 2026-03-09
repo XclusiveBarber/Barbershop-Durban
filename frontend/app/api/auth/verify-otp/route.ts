@@ -1,69 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase';
 
+/**
+ * POST /api/auth/verify-otp
+ * Verify OTP token and get session via Supabase Auth
+ */
 export async function POST(request: NextRequest) {
   try {
-    const { phone, code, name } = await request.json();
+    const { email, token } = await request.json();
 
-    if (!phone || !code) {
-      return NextResponse.json({ error: 'Phone and code required' }, { status: 400 });
+    if (!email || !token) {
+      return NextResponse.json({ error: 'Email and token required' }, { status: 400 });
     }
 
-    const supabase = createServerSupabaseClient();
     const { data, error } = await supabase.auth.verifyOtp({
-      phone,
-      token: code,
-      type: 'sms',
+      email,
+      token,
+      type: 'email',
     });
 
     if (error) {
-      console.error('[verify-otp] Supabase error:', error.message);
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      console.error('[auth] Verify OTP error:', error);
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
 
-    // If name provided (new user), upsert profile
-    if (name && data.user) {
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
-        full_name: name,
-        role: 'customer',
-      });
+    if (!data.session || !data.user) {
+      return NextResponse.json({ error: 'Session creation failed' }, { status: 500 });
     }
 
-    // Fetch existing profile
-    let profile = null;
-    if (data.user) {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('full_name, role')
-        .eq('id', data.user.id)
-        .single();
-      profile = profileData;
-    }
-
-    const user = data.user
-      ? {
+    // Set session cookie with the access token
+    const response = NextResponse.json({
+      success: true,
+      session: {
+        access_token: data.session.access_token,
+        user: {
           id: data.user.id,
-          phone,
-          name: profile?.full_name ?? name ?? '',
-          role: profile?.role ?? 'customer',
-        }
-      : null;
+          email: data.user.email,
+        },
+      },
+    });
 
-    const response = NextResponse.json({ success: true, user });
-
-    if (data.session) {
-      response.cookies.set('sb-access-token', data.session.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: data.session.expires_in,
-      });
-    }
+    // Store token in httpOnly cookie for secure access
+    response.cookies.set('supabaseToken', data.session.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    });
 
     return response;
-  } catch (error) {
-    console.error('[verify-otp] Unexpected error:', error);
+  } catch (err) {
+    console.error('[auth] Verify OTP error:', err);
     return NextResponse.json({ error: 'Failed to verify OTP' }, { status: 500 });
   }
 }

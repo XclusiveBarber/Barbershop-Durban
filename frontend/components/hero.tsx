@@ -1,5 +1,4 @@
 import React from "react";
-import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 
 export function Hero() {
@@ -7,12 +6,10 @@ export function Hero() {
     <section className="relative h-screen flex items-center justify-center overflow-hidden bg-black">
       {/* Background image */}
       <div className="absolute inset-0 z-0">
-        <Image
+        <img
           src="/hero/hero.jpeg"
           alt="Xclusive Barber"
-          fill
-          priority
-          className="object-cover opacity-55"
+          className="w-full h-full object-cover opacity-55"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/90" />
       </div>
@@ -30,12 +27,14 @@ export function Hero() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
           <a
             href="/services"
+            suppressHydrationWarning
             className="px-10 py-4 bg-accent text-accent-foreground text-sm uppercase tracking-widest font-bold hover:opacity-90 transition-all shadow-lg font-poppins"
           >
             Book Appointment
           </a>
           <a
             href="#services"
+            suppressHydrationWarning
             className="px-10 py-4 border-2 border-white/30 text-white text-sm uppercase tracking-widest font-semibold hover:bg-white hover:text-black transition-all font-poppins"
           >
             Our Services

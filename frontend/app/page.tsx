@@ -91,9 +91,7 @@ export default function App() {
                   <div className="absolute right-0 top-full mt-3 w-48 bg-white border border-black/10 shadow-xl z-50">
                     <div className="px-4 py-3 border-b border-black/5">
                       <p className="text-xs font-semibold text-black truncate">{user.name}</p>
-                      {user.phone && (
-                        <p className="text-[11px] text-black/40 truncate">{user.phone}</p>
-                      )}
+                      <p className="text-[11px] text-black/40 truncate">{user.email}</p>
                     </div>
                     <Link
                       href="/dashboard"
@@ -164,9 +162,7 @@ export default function App() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-accent-foreground leading-tight">{user.name}</p>
-                    {user.phone && (
-                      <p className="text-xs text-accent-foreground/50">{user.phone}</p>
-                    )}
+                    <p className="text-xs text-accent-foreground/50">{user.email}</p>
                   </div>
                 </div>
               </div>

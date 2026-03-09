@@ -1,0 +1,158 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|c:\\users\\andzi\\source\\repos\\andziso-mdaka\\barbershopbookingsystem\\barbershopbookingsystem\\controllers\\appointmentscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|solutionrelative:barbershopbookingsystem\\controllers\\appointmentscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|c:\\users\\andzi\\source\\repos\\andziso-mdaka\\barbershopbookingsystem\\barbershopbookingsystem\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|solutionrelative:barbershopbookingsystem\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|c:\\users\\andzi\\source\\repos\\andziso-mdaka\\barbershopbookingsystem\\barbershopbookingsystem\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|solutionrelative:barbershopbookingsystem\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|c:\\users\\andzi\\source\\repos\\andziso-mdaka\\barbershopbookingsystem\\barbershopbookingsystem\\models\\profile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|solutionrelative:barbershopbookingsystem\\models\\profile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|c:\\users\\andzi\\source\\repos\\andziso-mdaka\\barbershopbookingsystem\\barbershopbookingsystem\\appservices\\emailservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|solutionrelative:barbershopbookingsystem\\appservices\\emailservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|c:\\users\\andzi\\source\\repos\\andziso-mdaka\\barbershopbookingsystem\\barbershopbookingsystem\\models\\appointmentcreatedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|solutionrelative:barbershopbookingsystem\\models\\appointmentcreatedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|c:\\users\\andzi\\source\\repos\\andziso-mdaka\\barbershopbookingsystem\\barbershopbookingsystem\\models\\appointment.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|solutionrelative:barbershopbookingsystem\\models\\appointment.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|c:\\users\\andzi\\source\\repos\\andziso-mdaka\\barbershopbookingsystem\\barbershopbookingsystem\\models\\haircut.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6C2C6128-706E-8B77-A682-F10E516CBC37}|BarberShopBookingSystem\\BarberShopBookingSystem.csproj|solutionrelative:barbershopbookingsystem\\models\\haircut.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 6,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{c6f34f0d-7ae5-4f3a-be61-fe0c21ae9eb8}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Profile.cs",
+              "DocumentMoniker": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\Models\\Profile.cs",
+              "RelativeDocumentMoniker": "BarberShopBookingSystem\\Models\\Profile.cs",
+              "ToolTip": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\Models\\Profile.cs",
+              "RelativeToolTip": "BarberShopBookingSystem\\Models\\Profile.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-05T18:56:38.062Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "EmailService.cs",
+              "DocumentMoniker": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\AppServices\\EmailService.cs",
+              "RelativeDocumentMoniker": "BarberShopBookingSystem\\AppServices\\EmailService.cs",
+              "ToolTip": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\AppServices\\EmailService.cs",
+              "RelativeToolTip": "BarberShopBookingSystem\\AppServices\\EmailService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACsAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-05T18:45:08.64Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "Haircut.cs",
+              "DocumentMoniker": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\Models\\Haircut.cs",
+              "RelativeDocumentMoniker": "BarberShopBookingSystem\\Models\\Haircut.cs",
+              "ToolTip": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\Models\\Haircut.cs",
+              "RelativeToolTip": "BarberShopBookingSystem\\Models\\Haircut.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-02T18:09:49.638Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\appsettings.json",
+              "RelativeDocumentMoniker": "BarberShopBookingSystem\\appsettings.json",
+              "ToolTip": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\appsettings.json",
+              "RelativeToolTip": "BarberShopBookingSystem\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABcAAAAPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-03-02T18:01:02.652Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\Program.cs",
+              "RelativeDocumentMoniker": "BarberShopBookingSystem\\Program.cs",
+              "ToolTip": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\Program.cs",
+              "RelativeToolTip": "BarberShopBookingSystem\\Program.cs",
+              "ViewState": "AgIAAC0AAAAAAAAAAAAAAEEAAAADAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-02T10:28:42.106Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "AppointmentsController.cs",
+              "DocumentMoniker": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\Controllers\\AppointmentsController.cs",
+              "RelativeDocumentMoniker": "BarberShopBookingSystem\\Controllers\\AppointmentsController.cs",
+              "ToolTip": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\Controllers\\AppointmentsController.cs",
+              "RelativeToolTip": "BarberShopBookingSystem\\Controllers\\AppointmentsController.cs",
+              "ViewState": "AgIAADIAAAAAAAAAAAAowEYAAAAaAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-02T09:42:38.514Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "AppointmentCreateDto.cs",
+              "DocumentMoniker": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\Models\\AppointmentCreateDto.cs",
+              "RelativeDocumentMoniker": "BarberShopBookingSystem\\Models\\AppointmentCreateDto.cs",
+              "ToolTip": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\Models\\AppointmentCreateDto.cs",
+              "RelativeToolTip": "BarberShopBookingSystem\\Models\\AppointmentCreateDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAASAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-02T09:42:18.686Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "Appointment.cs",
+              "DocumentMoniker": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\Models\\Appointment.cs",
+              "RelativeDocumentMoniker": "BarberShopBookingSystem\\Models\\Appointment.cs",
+              "ToolTip": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\Models\\Appointment.cs",
+              "RelativeToolTip": "BarberShopBookingSystem\\Models\\Appointment.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-02T09:40:09.849Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

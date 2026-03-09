@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Image from "next/image";
 import {
   Instagram,
   Facebook,
@@ -227,12 +226,10 @@ export function Gallery() {
                   className="pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3"
                 >
                   <div className="relative aspect-[4/5] sm:aspect-square md:aspect-[4/5] overflow-hidden rounded-xl bg-neutral-900">
-                    <Image
+                    <img
                       src={src}
                       alt={`Gallery ${idx + 1}`}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover hover:scale-105 transition-transform duration-700 ease-in-out"
+                      className="absolute inset-0 w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out"
                     />
                   </div>
                 </CarouselItem>
@@ -241,8 +238,14 @@ export function Gallery() {
 
             {/* Desktop Navigation Buttons */}
             <div className="hidden md:block">
-              <CarouselPrevious className="absolute -left-12 top-1/2 -translate-y-1/2 bg-white/10 text-white border-white/20 hover:bg-white hover:text-black transition-all" />
-              <CarouselNext className="absolute -right-12 top-1/2 -translate-y-1/2 bg-white/10 text-white border-white/20 hover:bg-white hover:text-black transition-all" />
+              <CarouselPrevious 
+                suppressHydrationWarning
+                className="absolute -left-12 top-1/2 -translate-y-1/2 bg-white/10 text-white border-white/20 hover:bg-white hover:text-black transition-all" 
+              />
+              <CarouselNext 
+                suppressHydrationWarning
+                className="absolute -right-12 top-1/2 -translate-y-1/2 bg-white/10 text-white border-white/20 hover:bg-white hover:text-black transition-all" 
+              />
             </div>
           </Carousel>
 
@@ -252,6 +255,7 @@ export function Gallery() {
               <button
                 key={idx}
                 onClick={() => api?.scrollTo(idx)}
+                suppressHydrationWarning
                 className={`h-2 rounded-full transition-all duration-300 ${
                   idx === current
                     ? "bg-white w-8" // Active dot expands

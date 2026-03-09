@@ -17,7 +17,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
     }
 
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${appUrl}/auth/callback`,
+      },
+    });
 
     if (error) {
       console.error('[auth] Send OTP error:', error);

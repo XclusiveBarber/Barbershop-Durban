@@ -5,7 +5,7 @@ import { Mail, User, ChevronRight, AlertCircle, ChevronLeft } from "lucide-react
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth, type AuthUser } from "@/context/auth-context";
-import { sendOtp, verifyOtp, getProfile, createProfile } from "@/lib/supabase-auth";
+import { sendOtp, verifyOtp, getProfile, createProfile, updateProfile } from "@/lib/supabase-auth";
 
 export interface OtpLoginFormProps {
   onComplete: () => void;
@@ -26,6 +26,9 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  // True when the user already has a profile row but it has no full_name yet;
+  // handleSaveName should update the existing row instead of inserting a new one.
+  const [profileNeedsUpdate, setProfileNeedsUpdate] = useState(false);
 
   const handleSendOtp = async () => {
     if (!email.trim()) {
@@ -77,19 +80,21 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
 
       const profile = await getProfile(authUser.id);
 
-      if (profile) {
-        // Log in immediately
+      if (profile?.full_name) {
+        // Existing user with a complete profile — log in immediately
         const userData: AuthUser = {
           id: authUser.id,
           email: authUser.email ?? email,
-          name: profile.full_name ?? "",
+          name: profile.full_name,
           role: profile.role ?? "customer",
         };
         login(userData, token ?? undefined);
         toast.success(`Welcome back, ${userData.name}!`);
         onComplete();
       } else {
-        // Collect name
+        // No profile yet, or profile exists but has no name — collect name.
+        // If the profile row already exists we only need to update it.
+        setProfileNeedsUpdate(!!profile);
         setSupabaseUserId(authUser.id);
         setStep("name");
       }
@@ -116,12 +121,18 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
     setLoading(true);
 
     try {
-      await createProfile({
-        id: supabaseUserId,
-        email: email.trim(),
-        name: name.trim(),
-        role: "customer",
-      });
+      if (profileNeedsUpdate) {
+        // Profile row exists but had no full_name — update it
+        await updateProfile(supabaseUserId, { name: name.trim() });
+      } else {
+        // Brand-new user — create the profile row
+        await createProfile({
+          id: supabaseUserId,
+          email: email.trim(),
+          name: name.trim(),
+          role: "customer",
+        });
+      }
 
       const userData: AuthUser = {
         id: supabaseUserId,

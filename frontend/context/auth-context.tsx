@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const storedToken = localStorage.getItem(TOKEN_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed?.id && parsed?.email && parsed?.name) {
+        if (parsed?.id && parsed?.email) {
           setUser(parsed);
           setAccessToken(storedToken);
           restoredFromStorage = true;
@@ -87,16 +87,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq("id", session.user.id)
             .single();
 
-          if (profile?.full_name) {
-            const u: AuthUser = {
-              id:    session.user.id,
-              email: session.user.email!,
-              name:  profile.full_name,
-              role:  (profile.role as UserRole) || "customer",
-            };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-            setUser(u);
-          }
+          // Always update user when a valid session exists.
+          // Fall back to the name already in localStorage so that a profile
+          // with a missing full_name does not overwrite a valid stored name.
+          const storedRaw = localStorage.getItem(STORAGE_KEY);
+          const storedName: string =
+            storedRaw ? (JSON.parse(storedRaw)?.name ?? "") : "";
+          const u: AuthUser = {
+            id:    session.user.id,
+            email: session.user.email!,
+            name:  profile?.full_name || storedName,
+            role:  (profile?.role as UserRole) || "customer",
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+          setUser(u);
         } else if (!restoredFromStorage) {
           // No Supabase session AND nothing in localStorage — user is not logged in
           setUser(null);

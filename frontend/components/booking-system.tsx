@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { useAuth, type AuthUser } from "@/context/auth-context";
 import { OtpLoginForm } from "@/components/otp-login-form";
+import { calcBarberBreakdown, formatRand } from "@/lib/barber-calculations";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -120,6 +121,34 @@ function BookingSummaryCard({
       <div className="pt-3 border-t border-black/10 flex justify-between">
         <span className="font-semibold text-sm text-black">Total</span>
         <span className="font-semibold text-sm text-black">{service.price}</span>
+      </div>
+    </div>
+  );
+}
+
+function BarberBreakdownCard({ price, barberName }: { price: number; barberName?: string }) {
+  const { serviceTotal, barberEarnings, shopRevenue } = calcBarberBreakdown(price);
+  return (
+    <div className="bg-black/[0.03] border-2 border-black/5 p-5 space-y-3">
+      <p className="text-[10px] uppercase tracking-widest text-black/30 font-medium mb-3">
+        Earnings Breakdown
+      </p>
+      <div className="flex justify-between text-sm">
+        <span className="text-black/50">Service Total</span>
+        <span className="font-medium text-black">{formatRand(serviceTotal)}</span>
+      </div>
+      <div className="flex justify-between text-sm">
+        <span className="text-black/50">
+          {barberName ? `${barberName}'s Earnings` : "Barber Earnings"}{" "}
+          <span className="text-black/30">(65%)</span>
+        </span>
+        <span className="font-medium text-black">{formatRand(barberEarnings)}</span>
+      </div>
+      <div className="flex justify-between text-sm border-t border-black/10 pt-3">
+        <span className="text-black/50">
+          Shop Revenue <span className="text-black/30">(35%)</span>
+        </span>
+        <span className="font-medium text-black">{formatRand(shopRevenue)}</span>
       </div>
     </div>
   );
@@ -489,6 +518,15 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                       selectedDate ? format(selectedDate, "EEE, MMM d") : ""
                     } at ${selectedTime} is confirmed.`}
                   </p>
+
+                  {selectedService && (
+                    <div className="max-w-sm mx-auto w-full text-left">
+                      <BarberBreakdownCard
+                        price={selectedService.price}
+                        barberName={selectedBarber?.name}
+                      />
+                    </div>
+                  )}
 
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                     <Link

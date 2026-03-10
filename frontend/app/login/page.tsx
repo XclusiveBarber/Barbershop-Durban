@@ -21,6 +21,7 @@ import { toast, Toaster } from "sonner";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { OtpLoginForm } from "@/components/otp-login-form";
+import { AdminLoginForm } from "@/components/admin-login-form";
 
 // ─── Main wrapper ─────────────────────────────────────────────────────────────
 
@@ -34,7 +35,7 @@ export default function LoginPage() {
 
 // ─── Content ──────────────────────────────────────────────────────────────────
 
-type LoginMode = "customer" | "staff";
+type LoginMode = "customer" | "staff" | "admin";
 
 function LoginContent() {
   const router = useRouter();
@@ -104,6 +105,13 @@ function LoginContent() {
           {mode === "customer" && (
             <div className="pt-4">
               <OtpLoginForm onComplete={() => router.push(returnTo)} />
+            </div>
+          )}
+
+          {/* ADMIN MODE */}
+          {mode === "admin" && (
+            <div className="pt-4">
+              <AdminLoginForm onComplete={() => router.push(returnTo)} />
             </div>
           )}
 
@@ -202,12 +210,41 @@ function LoginContent() {
                 +27 678 86 433
               </a>
             </p>
-            <button
-              onClick={() => setMode(mode === "customer" ? "staff" : "customer")}
-              className="text-[11px] uppercase tracking-[0.2em] text-black/20 hover:text-black/40 transition-colors"
-            >
-              {mode === "customer" ? "Staff Portal →" : "← Customer"}
-            </button>
+            <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.2em]">
+              {mode === "customer" && (
+                <>
+                  <button
+                    onClick={() => setMode("admin")}
+                    className="text-black/20 hover:text-black/40 transition-colors"
+                  >
+                    Admin
+                  </button>
+                  <span className="text-black/10">|</span>
+                  <button
+                    onClick={() => setMode("staff")}
+                    className="text-black/20 hover:text-black/40 transition-colors"
+                  >
+                    Staff Portal →
+                  </button>
+                </>
+              )}
+              {mode === "admin" && (
+                <button
+                  onClick={() => setMode("customer")}
+                  className="text-black/20 hover:text-black/40 transition-colors"
+                >
+                  ← Customer
+                </button>
+              )}
+              {mode === "staff" && (
+                <button
+                  onClick={() => setMode("customer")}
+                  className="text-black/20 hover:text-black/40 transition-colors"
+                >
+                  ← Customer
+                </button>
+              )}
+            </div>
           </div>
 
         </div>

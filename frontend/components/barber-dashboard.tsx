@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useAuth, type AuthUser } from '@/context/auth-context';
+import { calcBarberBreakdown, parsePrice, formatRand } from '@/lib/barber-calculations';
 
 interface Appointment {
   id: string;
@@ -201,20 +202,48 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
                     <th className="px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Service</th>
                     <th className="px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Time</th>
                     <th className="px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Price</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Your Earnings (65%)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {completed.map((appointment) => (
-                    <tr key={appointment.id} className="border-b border-black/5 hover:bg-black/[0.02]">
-                      <td className="px-6 py-4 text-sm">{appointment.customer_name}</td>
-                      <td className="px-6 py-4 text-sm text-black/60">{appointment.service_name}</td>
-                      <td className="px-6 py-4 text-sm text-black/40">{appointment.appointment_time}</td>
-                      <td className="px-6 py-4 text-sm font-medium">{appointment.service_price}</td>
-                    </tr>
-                  ))}
+                  {completed.map((appointment) => {
+                    const price = parsePrice(appointment.service_price);
+                    const { barberEarnings } = calcBarberBreakdown(price);
+                    return (
+                      <tr key={appointment.id} className="border-b border-black/5 hover:bg-black/[0.02]">
+                        <td className="px-6 py-4 text-sm">{appointment.customer_name}</td>
+                        <td className="px-6 py-4 text-sm text-black/60">{appointment.service_name}</td>
+                        <td className="px-6 py-4 text-sm text-black/40">{appointment.appointment_time}</td>
+                        <td className="px-6 py-4 text-sm font-medium">{appointment.service_price}</td>
+                        <td className="px-6 py-4 text-sm font-semibold text-black">{formatRand(barberEarnings)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
+
+            {/* Daily earnings summary */}
+            {(() => {
+              const totalRevenue  = completed.reduce((sum, a) => sum + parsePrice(a.service_price), 0);
+              const { barberEarnings, shopRevenue } = calcBarberBreakdown(totalRevenue);
+              return (
+                <div className="mt-6 border-2 border-black/10 p-6 grid grid-cols-3 gap-6">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-black/30 mb-1">Total Revenue</p>
+                    <p className="text-2xl font-light">{formatRand(totalRevenue)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-black/30 mb-1">Your Earnings (65%)</p>
+                    <p className="text-2xl font-light text-black">{formatRand(barberEarnings)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-black/30 mb-1">Shop Revenue (35%)</p>
+                    <p className="text-2xl font-light text-black/50">{formatRand(shopRevenue)}</p>
+                  </div>
+                </div>
+              );
+            })()}
           </section>
         )}
       </div>

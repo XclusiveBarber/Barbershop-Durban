@@ -59,21 +59,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_OUT") {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(TOKEN_KEY);
-        setUser(null);
-        setAccessToken(null);
-        setIsLoading(false);
-        return;
-      }
-
-      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") && session) {
+    // Profile load is deferred via setTimeout so it runs OUTSIDE the onAuthStateChange
+    // callback. Supabase holds an internal mutex while firing auth events — calling
+    // supabase.from() synchronously inside the callback deadlocks the client.
+    const loadProfile = (session: { access_token: string; user: { id: string; email?: string } }) => {
+      setTimeout(async () => {
         localStorage.setItem(TOKEN_KEY, session.access_token);
         setAccessToken(session.access_token);
 
-        // Load profile from DB
         const { data: profile } = await supabase
           .from("profiles")
           .select("full_name, role")
@@ -93,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Profile not ready yet — fall back to whatever is in localStorage
+        // Profile not ready yet — fall back to localStorage
         try {
           const stored = localStorage.getItem(STORAGE_KEY);
           if (stored) {
@@ -102,14 +95,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setUser(parsed);
             }
           }
-        } catch {
-          /* ignore */
-        }
+        } catch { /* ignore */ }
+        setIsLoading(false);
+      }, 0);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(TOKEN_KEY);
+        setUser(null);
+        setAccessToken(null);
         setIsLoading(false);
         return;
       }
 
-      // INITIAL_SESSION with no session — fall back to localStorage
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") && session) {
+        loadProfile(session);
+        return;
+      }
+
+      // INITIAL_SESSION with no active session — fall back to localStorage
       if (event === "INITIAL_SESSION" && !session) {
         try {
           const stored = localStorage.getItem(STORAGE_KEY);

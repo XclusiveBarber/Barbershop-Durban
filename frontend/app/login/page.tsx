@@ -144,33 +144,25 @@ function LoginContent() {
         return;
       }
 
-      // Get or create staff profile
-      const { data: profile, error: profileError } = await supabase
+      // Upsert profile — always enforce the correct staff role based on email domain.
+      // This also handles the case where the user previously signed up as a customer.
+      const { data: profileData, error: upsertError } = await supabase
         .from("profiles")
-        .select("id, full_name, role")
-        .eq("id", authUser.id)
-        .single();
-
-      let profileData = profile;
-
-      // If profile doesn't exist, create it with staff role
-      if (!profile) {
-        const { data: newProfile, error: createError } = await supabase
-          .from("profiles")
-          .insert({
+        .upsert(
+          {
             id: authUser.id,
             email: authUser.email,
             full_name: authUser.email?.split("@")[0] ?? "Staff Member",
             role: validation.role,
-          })
-          .select()
-          .single();
+          },
+          { onConflict: "id", ignoreDuplicates: false }
+        )
+        .select("id, full_name, role")
+        .single();
 
-        if (createError) {
-          setStaffError("Failed to create staff profile");
-          return;
-        }
-        profileData = newProfile;
+      if (upsertError) {
+        setStaffError("Failed to set up staff profile");
+        return;
       }
 
       const userData: AuthUser = {

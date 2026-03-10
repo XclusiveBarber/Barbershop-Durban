@@ -370,17 +370,6 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                 >
                   <StepHeader onBack={goPrev} title="Select Date & Time" />
 
-                  {/* Auto-assigned barber info */}
-                  {selectedBarber && (
-                    <div className="bg-black/[0.03] border-2 border-black/5 p-4 space-y-2">
-                      <p className="text-[10px] uppercase tracking-widest text-black/30 font-medium">
-                        Barber Assigned
-                      </p>
-                      <p className="font-medium text-black">{selectedBarber.name}</p>
-                      <p className="text-xs text-black/40">{selectedBarber.specialty || "Professional Barber"}</p>
-                    </div>
-                  )}
-
                   <div className="grid md:grid-cols-2 gap-10">
                     <div className="flex justify-center border border-black/10 p-4">
                       <DayPicker

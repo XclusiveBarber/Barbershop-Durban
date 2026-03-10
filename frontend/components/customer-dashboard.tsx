@@ -8,37 +8,44 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { useAuth, type AuthUser } from '@/context/auth-context';
 
-interface Appointment {
+// Shape returned by GET /api/appointments
+interface AppointmentRow {
   id: number;
-  service_name: string;
-  service_price: string;
-  service_duration: string;
   appointment_date: string;
-  appointment_time: string;
+  time_slot: string;
   status: string;
-  barber_name: string;
+  total_price: number | null;
+  payment_status: string;
   created_at: string;
+  haircuts: { name: string; price: number } | null;
+  barbers:  { full_name: string } | null;
 }
 
 export function CustomerDashboard({ user }: { user: AuthUser }) {
   const router = useRouter();
-  const { logout } = useAuth();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { logout, accessToken } = useAuth();
+  const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchAppointments();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
 
   const fetchAppointments = async () => {
     try {
-      const response = await fetch('/api/appointments');
+      const headers: Record<string, string> = {};
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+      const response = await fetch('/api/appointments', { headers });
       const data = await response.json();
       if (response.ok) {
-        setAppointments(data.appointments);
+        setAppointments(data.appointments ?? []);
+      } else {
+        toast.error(data.error || 'Failed to load appointments');
       }
     } catch {
-      // silently handle - testing mode
+      toast.error('Failed to load appointments');
     } finally {
       setLoading(false);
     }
@@ -47,7 +54,10 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
   const handleCancelAppointment = async (id: number) => {
     if (!confirm('Are you sure you want to cancel this appointment?')) return;
     try {
-      const response = await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
+      const headers: Record<string, string> = {};
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+      const response = await fetch(`/api/appointments/${id}`, { method: 'DELETE', headers });
       if (response.ok) {
         toast.success('Appointment cancelled');
         fetchAppointments();
@@ -65,7 +75,7 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
   };
 
   const upcoming = appointments.filter(a => a.status !== 'cancelled' && a.status !== 'completed');
-  const past = appointments.filter(a => a.status === 'completed' || a.status === 'cancelled');
+  const past     = appointments.filter(a => a.status === 'completed' || a.status === 'cancelled');
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -141,32 +151,34 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
                 </div>
               ) : (
                 <div className="grid md:grid-cols-2 gap-6">
-                  {upcoming.map((appointment) => (
-                    <div key={appointment.id} className="border-2 border-black/10 p-6 hover:border-accent/30 transition-colors">
+                  {upcoming.map((appt) => (
+                    <div key={appt.id} className="border-2 border-black/10 p-6 hover:border-accent/30 transition-colors">
                       <div className="flex justify-between items-start mb-6">
                         <div>
-                          <h3 className="text-lg font-light mb-1">{appointment.service_name}</h3>
-                          <p className="text-xs text-black/40">with {appointment.barber_name}</p>
+                          <h3 className="text-lg font-light mb-1">{appt.haircuts?.name ?? '—'}</h3>
+                          <p className="text-xs text-black/40">with {appt.barbers?.full_name ?? '—'}</p>
                         </div>
                         <span className={`px-3 py-1 text-[10px] uppercase tracking-widest font-medium ${
-                          appointment.status === 'confirmed'
+                          appt.status === 'confirmed'
                             ? 'bg-accent text-accent-foreground'
                             : 'bg-black/5 text-black/40'
                         }`}>
-                          {appointment.status}
+                          {appt.status}
                         </span>
                       </div>
 
                       <div className="space-y-3 mb-6">
                         <div className="flex items-center gap-3 text-sm text-black/60">
                           <Calendar className="w-4 h-4 text-black/30" />
-                          {format(new Date(appointment.appointment_date), 'EEEE, MMMM d, yyyy')}
+                          {format(new Date(appt.appointment_date), 'EEEE, MMMM d, yyyy')}
                         </div>
                         <div className="flex items-center gap-3 text-sm text-black/60">
                           <Clock className="w-4 h-4 text-black/30" />
-                          {appointment.appointment_time} ({appointment.service_duration})
+                          {appt.time_slot}
                         </div>
-                        <div className="text-sm font-medium">{appointment.service_price}</div>
+                        {appt.total_price != null && (
+                          <div className="text-sm font-medium">R{appt.total_price}</div>
+                        )}
                       </div>
 
                       <div className="flex gap-3 pt-6 border-t border-black/5">
@@ -177,7 +189,7 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
                           <Edit2 className="w-3 h-3" /> Reschedule
                         </button>
                         <button
-                          onClick={() => handleCancelAppointment(appointment.id)}
+                          onClick={() => handleCancelAppointment(appt.id)}
                           className="flex-1 border-2 border-black/10 text-black/40 px-4 py-2 text-xs uppercase tracking-widest hover:border-black/30 hover:text-black transition-all flex items-center justify-center gap-2"
                         >
                           <X className="w-3 h-3" /> Cancel
@@ -204,18 +216,18 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {past.map((appointment) => (
-                        <tr key={appointment.id} className="border-b border-black/5 hover:bg-black/[0.02]">
-                          <td className="px-6 py-4 text-sm">{appointment.service_name}</td>
-                          <td className="px-6 py-4 text-sm text-black/40">{appointment.barber_name}</td>
+                      {past.map((appt) => (
+                        <tr key={appt.id} className="border-b border-black/5 hover:bg-black/[0.02]">
+                          <td className="px-6 py-4 text-sm">{appt.haircuts?.name ?? '—'}</td>
+                          <td className="px-6 py-4 text-sm text-black/40">{appt.barbers?.full_name ?? '—'}</td>
                           <td className="px-6 py-4 text-sm text-black/40">
-                            {format(new Date(appointment.appointment_date), 'MMM d, yyyy')}
+                            {format(new Date(appt.appointment_date), 'MMM d, yyyy')}
                           </td>
                           <td className="px-6 py-4">
                             <span className={`text-[10px] uppercase tracking-widest ${
-                              appointment.status === 'completed' ? 'text-black/40' : 'text-black/20'
+                              appt.status === 'completed' ? 'text-black/40' : 'text-black/20'
                             }`}>
-                              {appointment.status}
+                              {appt.status}
                             </span>
                           </td>
                         </tr>

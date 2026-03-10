@@ -44,6 +44,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading]     = useState(true);
 
+  // Track whether the user explicitly requested logout so we can ignore
+  // spurious SIGNED_OUT events that Supabase fires during session recovery.
+  const explicitLogoutRef = React.useRef(false);
+
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
 
@@ -115,10 +119,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // internal mutex that would deadlock any supabase.* call made within it.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(TOKEN_KEY);
-        setUser(null);
-        setAccessToken(null);
+        // Only clear state if the user explicitly clicked "Sign Out".
+        // Supabase can fire spurious SIGNED_OUT events during internal
+        // session recovery / token refresh cycles, which would otherwise
+        // log the user out unexpectedly (e.g. after booking).
+        if (explicitLogoutRef.current) {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(TOKEN_KEY);
+          setUser(null);
+          setAccessToken(null);
+          explicitLogoutRef.current = false;
+        }
       } else if (event === "TOKEN_REFRESHED" && session) {
         localStorage.setItem(TOKEN_KEY, session.access_token);
         setAccessToken(session.access_token);
@@ -137,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    explicitLogoutRef.current = true;
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/client";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 // GET - Fetch appointments for the authenticated user
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const token = request.headers.get("Authorization")?.replace("Bearer ", "");
-    const supabase = createServerSupabaseClient(token);
+    // createSupabaseServerClient reads the sb-*-auth-token cookie set by
+    // @supabase/ssr — no manual Authorization header needed.
+    const supabase = await createSupabaseServerClient();
 
-    // Identify the requesting user
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -46,8 +46,7 @@ export async function GET(request: NextRequest) {
 // POST - Create a new appointment
 export async function POST(request: NextRequest) {
   try {
-    const token = request.headers.get("Authorization")?.replace("Bearer ", "");
-    const supabase = createServerSupabaseClient(token);
+    const supabase = await createSupabaseServerClient();
 
     const body = await request.json();
     // Support both "appointment_time" (from booking-system) and "time_slot" (legacy)
@@ -60,7 +59,6 @@ export async function POST(request: NextRequest) {
       status,
       total_price,
       payment_status,
-      user_id,
     } = body;
 
     const resolvedTimeSlot = time_slot ?? appointment_time;
@@ -72,7 +70,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Identify the requesting user from the session cookie
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized. Please log in to book." }, { status: 401 });
+    }
+
     const insertData: Record<string, unknown> = {
+      user_id: user.id,
       appointment_date,
       time_slot: resolvedTimeSlot,
       status: status ?? "pending",
@@ -82,18 +87,6 @@ export async function POST(request: NextRequest) {
     if (barber_id) insertData.barber_id = barber_id;
     if (haircut_id) insertData.haircut_id = haircut_id;
     if (total_price !== undefined) insertData.total_price = total_price;
-
-    // Attach user_id — prefer explicit value, then verify from token
-    if (user_id) {
-      insertData.user_id = user_id;
-    } else if (token) {
-      const { data: { user } } = await supabase.auth.getUser(token);
-      if (user) insertData.user_id = user.id;
-    }
-
-    if (!insertData.user_id) {
-      return NextResponse.json({ error: "Unauthorized. Please log in to book." }, { status: 401 });
-    }
 
     const { data, error } = await supabase
       .from("appointments")

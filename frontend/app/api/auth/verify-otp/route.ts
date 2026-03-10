@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 /**
  * POST /api/auth/verify-otp
- * Verify OTP token and get session via Supabase Auth
+ * Verify OTP token and establish a session via Supabase Auth.
+ *
+ * Uses createSupabaseServerClient so that on success the standard
+ * sb-*-auth-token cookies are set automatically — no custom cookie needed.
+ * These are the same cookies that @supabase/ssr reads on subsequent requests,
+ * so every API route and the middleware can validate the session without
+ * requiring a manual Authorization header.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +18,8 @@ export async function POST(request: NextRequest) {
     if (!email || !token) {
       return NextResponse.json({ error: 'Email and token required' }, { status: 400 });
     }
+
+    const supabase = await createSupabaseServerClient();
 
     const { data, error } = await supabase.auth.verifyOtp({
       email,
@@ -28,8 +36,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Session creation failed' }, { status: 500 });
     }
 
-    // Set session cookie with the access token
-    const response = NextResponse.json({
+    // The SSR client's cookie callbacks already set the sb-*-auth-token cookie.
+    // We just return the session data for the client to store in context/localStorage.
+    return NextResponse.json({
       success: true,
       session: {
         access_token: data.session.access_token,
@@ -39,16 +48,6 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-
-    // Store token in httpOnly cookie for secure access
-    response.cookies.set('supabaseToken', data.session.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-    });
-
-    return response;
   } catch (err) {
     console.error('[auth] Verify OTP error:', err);
     return NextResponse.json({ error: 'Failed to verify OTP' }, { status: 500 });

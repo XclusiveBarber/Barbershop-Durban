@@ -21,7 +21,6 @@ import { toast, Toaster } from "sonner";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { OtpLoginForm } from "@/components/otp-login-form";
-import { AdminLoginForm } from "@/components/admin-login-form";
 
 // ─── Main wrapper ─────────────────────────────────────────────────────────────
 
@@ -35,7 +34,7 @@ export default function LoginPage() {
 
 // ─── Content ──────────────────────────────────────────────────────────────────
 
-type LoginMode = "customer" | "staff" | "admin";
+type LoginMode = "customer" | "staff";
 
 function LoginContent() {
   const router = useRouter();
@@ -53,6 +52,23 @@ function LoginContent() {
 
   // ─ Staff flow ─────────────────────────────────────────────────────────────
 
+  const validateStaffEmail = (email: string): { valid: boolean; role: "admin" | "staff" | null } => {
+    const trimmed = email.trim();
+
+    // Check if email has @xclusivebarber.co.za domain
+    if (!trimmed.endsWith("@xclusivebarber.co.za")) {
+      return { valid: false, role: null };
+    }
+
+    // Check if it's the admin account
+    if (trimmed === "admin@xclusivebarber.co.za") {
+      return { valid: true, role: "admin" };
+    }
+
+    // Any other @xclusivebarber.co.za is staff
+    return { valid: true, role: "staff" };
+  };
+
   const handleStaffLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!staffEmail.trim() || !staffPassword.trim()) {
@@ -60,11 +76,17 @@ function LoginContent() {
       return;
     }
 
+    const emailValidation = validateStaffEmail(staffEmail);
+    if (!emailValidation.valid) {
+      setStaffError("Email must end with @xclusivebarber.co.za");
+      return;
+    }
+
     setStaffError(null);
     setStaffLoading(true);
 
     try {
-      // TODO: Implement real staff authentication
+      // TODO: Implement real staff/admin authentication with password verification
       toast.error("Staff login requires Supabase configuration");
     } finally {
       setStaffLoading(false);
@@ -108,13 +130,6 @@ function LoginContent() {
             </div>
           )}
 
-          {/* ADMIN MODE */}
-          {mode === "admin" && (
-            <div className="pt-4">
-              <AdminLoginForm onComplete={() => router.push(returnTo)} />
-            </div>
-          )}
-
           {/* STAFF MODE */}
           {mode === "staff" && (
             <motion.div
@@ -131,7 +146,7 @@ function LoginContent() {
                   Staff Sign In
                 </h1>
                 <p className="text-black/50 text-sm leading-relaxed">
-                  Barbers and admins only.
+                  Barbers, admins, and team members. Use your @xclusivebarber.co.za email.
                 </p>
               </div>
 
@@ -160,7 +175,7 @@ function LoginContent() {
                         setStaffEmail(e.target.value);
                         setStaffError(null);
                       }}
-                      placeholder="you@xclusive.co.za"
+                      placeholder="you@xclusivebarber.co.za"
                       className="w-full pl-12 pr-4 py-4 border-2 border-black/10 text-black placeholder:text-black/20 focus:border-black focus:outline-none transition-all bg-white"
                       disabled={staffLoading}
                     />
@@ -210,41 +225,12 @@ function LoginContent() {
                 +27 678 86 433
               </a>
             </p>
-            <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.2em]">
-              {mode === "customer" && (
-                <>
-                  <button
-                    onClick={() => setMode("admin")}
-                    className="text-black/20 hover:text-black/40 transition-colors"
-                  >
-                    Admin
-                  </button>
-                  <span className="text-black/10">|</span>
-                  <button
-                    onClick={() => setMode("staff")}
-                    className="text-black/20 hover:text-black/40 transition-colors"
-                  >
-                    Staff Portal →
-                  </button>
-                </>
-              )}
-              {mode === "admin" && (
-                <button
-                  onClick={() => setMode("customer")}
-                  className="text-black/20 hover:text-black/40 transition-colors"
-                >
-                  ← Customer
-                </button>
-              )}
-              {mode === "staff" && (
-                <button
-                  onClick={() => setMode("customer")}
-                  className="text-black/20 hover:text-black/40 transition-colors"
-                >
-                  ← Customer
-                </button>
-              )}
-            </div>
+            <button
+              onClick={() => setMode(mode === "customer" ? "staff" : "customer")}
+              className="text-[11px] uppercase tracking-[0.2em] text-black/20 hover:text-black/40 transition-colors"
+            >
+              {mode === "customer" ? "Staff Portal →" : "← Customer"}
+            </button>
           </div>
 
         </div>

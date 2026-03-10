@@ -490,6 +490,16 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                     } at ${selectedTime} is confirmed.`}
                   </p>
 
+                  {selectedBarber && (
+                    <div className="bg-black/[0.03] border-2 border-black/5 p-5 max-w-sm mx-auto space-y-2">
+                      <p className="text-[10px] uppercase tracking-widest text-black/30 font-medium">
+                        Your Barber (Least Busy)
+                      </p>
+                      <p className="font-medium text-black text-lg">{selectedBarber.name}</p>
+                      <p className="text-xs text-black/40">{selectedBarber.specialty || "Professional Barber"}</p>
+                    </div>
+                  )}
+
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                     <Link
                       href="/dashboard"

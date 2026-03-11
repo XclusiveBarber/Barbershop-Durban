@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { useAuth, type AuthUser } from '@/context/auth-context';
 import { calcBarberBreakdown, parsePrice, formatRand } from '@/lib/barber-calculations';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://barbershop-api-ccbne8afakcad3fy.southafricanorth-01.azurewebsites.net/api";
+
 interface Appointment {
   id: string;
   service_name: string;
@@ -41,7 +43,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
     try {
       const headers: Record<string, string> = {};
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-      const response = await fetch('/api/appointments/all', { headers });
+      const response = await fetch(`${API_URL}/appointments/all`, { headers });
       const data = await response.json();
       if (response.ok) setAppointments(Array.isArray(data) ? data : (data.appointments ?? []));
       else toast.error('Failed to load appointments');
@@ -57,7 +59,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-      const response = await fetch(`/api/appointments/${id}`, {
+      const response = await fetch(`${API_URL}/appointments/${id}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ status }),

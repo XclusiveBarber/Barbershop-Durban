@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { useAuth, type AuthUser } from '@/context/auth-context';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://barbershop-api-ccbne8afakcad3fy.southafricanorth-01.azurewebsites.net/api";
+
 // Shape returned by GET /api/appointments
 interface AppointmentRow {
   id: number;
@@ -37,7 +39,7 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
       const headers: Record<string, string> = {};
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
-      const response = await fetch('/api/appointments/my-appointments', { headers });
+      const response = await fetch(`${API_URL}/appointments/my-appointments`, { headers });
       const data = await response.json();
       if (response.ok) {
         setAppointments(Array.isArray(data) ? data : (data.appointments ?? []));
@@ -57,7 +59,7 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
       const headers: Record<string, string> = {};
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
-      const response = await fetch(`/api/appointments/${id}`, { method: 'DELETE', headers });
+      const response = await fetch(`${API_URL}/appointments/${id}`, { method: 'DELETE', headers });
       if (response.ok) {
         toast.success('Appointment cancelled');
         fetchAppointments();

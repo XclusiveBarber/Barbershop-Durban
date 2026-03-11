@@ -31,9 +31,6 @@ import Link from "next/link";
 import { useAuth, type AuthUser } from "@/context/auth-context";
 import { OtpLoginForm } from "@/components/otp-login-form";
 
-// ─── API base URL ────────────────────────────────────────────────────────────
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://barbershop-api-ccbne8afakcad3fy.southafricanorth-01.azurewebsites.net/api";
-
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 interface Service {
@@ -154,8 +151,8 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
     const loadData = async () => {
       try {
         const [servicesRes, barbersRes] = await Promise.all([
-          fetch(`${API_URL}/haircuts`),
-          fetch(`${API_URL}/barbers`),
+          fetch("/api/haircuts"),
+          fetch("/api/barbers"),
         ]);
 
         if (servicesRes.ok) {
@@ -188,7 +185,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
     const fetchSlots = async () => {
       try {
         const dateStr = format(selectedDate, "yyyy-MM-dd");
-        const res = await fetch(`${API_URL}/availability?date=${dateStr}`);
+        const res = await fetch(`/api/availability?date=${dateStr}`);
         const data = await res.json();
         // C# returns { available_slots: [...] } — slots that still have a free barber
         setAvailableSlots(data.available_slots || DEFAULT_TIME_SLOTS);
@@ -220,7 +217,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
 
-      const response = await fetch(`${API_URL}/appointments`, {
+      const response = await fetch("/api/appointments", {
         method: "POST",
         headers,
         body: JSON.stringify({

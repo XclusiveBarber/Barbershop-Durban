@@ -8,8 +8,6 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { useAuth, type AuthUser } from '@/context/auth-context';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://barbershop-api-ccbne8afakcad3fy.southafricanorth-01.azurewebsites.net/api";
-
 interface Appointment {
   id: number;
   service_name: string;
@@ -37,7 +35,7 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
 
   const fetchAppointments = async () => {
     try {
-      let url = `${API_URL}/appointments/all`;
+      let url = '/api/appointments/all';
       if (view === 'day') {
         url += `?date=${format(currentDate, 'yyyy-MM-dd')}`;
       }
@@ -59,7 +57,7 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-      const response = await fetch(`${API_URL}/appointments/${id}`, {
+      const response = await fetch(`/api/appointments/${id}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ status: newStatus })
@@ -333,7 +331,7 @@ function AnalyticsTab() {
     try {
       const headers: Record<string, string> = {};
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-      const response = await fetch(`${API_URL}/analytics?period=${period}`, { headers });
+      const response = await fetch(`/api/analytics?period=${period}`, { headers });
       const data = await response.json();
       if (response.ok) setAnalytics(data);
     } catch {
@@ -453,7 +451,7 @@ function CRMTab() {
     try {
       const headers: Record<string, string> = {};
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-      const response = await fetch(`${API_URL}/customers`, { headers });
+      const response = await fetch('/api/customers', { headers });
       const data = await response.json();
       if (response.ok) setCustomers(Array.isArray(data) ? data : (data.customers ?? []));
     } catch {
@@ -467,7 +465,7 @@ function CRMTab() {
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-      const response = await fetch(`${API_URL}/customers`, {
+      const response = await fetch('/api/customers', {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ user_id: userId, [field]: value })
@@ -570,7 +568,7 @@ function ServicesTab() {
 
   const fetchHaircuts = async () => {
     try {
-      const res = await fetch(`${API_URL}/haircuts`);
+      const res = await fetch('/api/haircuts');
       const data = await res.json();
       if (res.ok) setHaircuts(Array.isArray(data) ? data : (data.haircuts ?? []));
     } catch {
@@ -595,7 +593,7 @@ function ServicesTab() {
     try {
       const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
       if (accessToken) authHeaders['Authorization'] = `Bearer ${accessToken}`;
-      const res = await fetch(`${API_URL}/haircuts`, {
+      const res = await fetch('/api/haircuts', {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({ name: newName.trim(), price, description: newDesc.trim() || null }),

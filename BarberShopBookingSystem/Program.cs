@@ -38,7 +38,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = true,
             ValidIssuer = builder.Configuration["Supabase:Url"],
             ValidateAudience = true,
-            ValidAudience = builder.Configuration["Supabase:ClientId"], // Supabase anon/public key
+            ValidAudience = "authenticated", // Supabase user JWTs always have aud = "authenticated"
             ValidateLifetime = true,
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["Supabase:JwtSecret"])

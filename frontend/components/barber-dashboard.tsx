@@ -25,7 +25,7 @@ type Tab = 'today' | 'upcoming' | 'history';
 
 export function BarberDashboard({ user }: { user: AuthUser }) {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, accessToken } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -39,7 +39,9 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
 
   const fetchAppointments = async () => {
     try {
-      const response = await fetch('/api/appointments/all');
+      const headers: Record<string, string> = {};
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+      const response = await fetch('/api/appointments/all', { headers });
       const data = await response.json();
       if (response.ok) setAppointments(data.appointments ?? []);
       else toast.error('Failed to load appointments');
@@ -53,9 +55,11 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
   const updateStatus = async (id: string, status: 'late' | 'completed') => {
     setUpdating(id + status);
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
       const response = await fetch(`/api/appointments/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ status }),
       });
       if (response.ok) {

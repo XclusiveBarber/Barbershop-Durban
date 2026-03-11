@@ -175,53 +175,28 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
     loadData();
   }, []);
 
-  // Auto-select barber with least appointments when date changes
+  // Fetch available time slots when date changes
   useEffect(() => {
-    if (!selectedDate || barbers.length === 0) {
-      setSelectedBarber(null);
+    if (!selectedDate) {
       setAvailableSlots([]);
       return;
     }
 
-    const assignBarber = async () => {
+    const fetchSlots = async () => {
       try {
         const dateStr = format(selectedDate, "yyyy-MM-dd");
-
-        // Fetch appointment count for each barber on this date
-        const barberAppointments = await Promise.all(
-          barbers.map(async (barber) => {
-            const res = await fetch(
-              `/api/availability?barber_id=${barber.id}&date=${dateStr}`
-            );
-            const data = await res.json();
-            return {
-              barber,
-              bookedSlots: data.booked_slots || [],
-            };
-          })
-        );
-
-        // Find barber with least appointments
-        const leastBusyBarber = barberAppointments.reduce((prev, curr) =>
-          curr.bookedSlots.length < prev.bookedSlots.length ? curr : prev
-        );
-
-        setSelectedBarber(leastBusyBarber.barber);
-        setAvailableSlots(DEFAULT_TIME_SLOTS.filter(
-          (slot) => !leastBusyBarber.bookedSlots.includes(slot)
-        ));
+        const res = await fetch(`/api/availability?date=${dateStr}`);
+        const data = await res.json();
+        // C# returns { available_slots: [...] } — slots that still have a free barber
+        setAvailableSlots(data.available_slots || DEFAULT_TIME_SLOTS);
       } catch (error) {
-        console.error("Failed to assign barber:", error);
-        // Fallback to first barber
-        if (barbers.length > 0) {
-          setSelectedBarber(barbers[0]);
-          setAvailableSlots(DEFAULT_TIME_SLOTS);
-        }
+        console.error("Failed to fetch availability:", error);
+        setAvailableSlots(DEFAULT_TIME_SLOTS);
       }
     };
 
-    assignBarber();
-  }, [selectedDate, barbers]);
+    fetchSlots();
+  }, [selectedDate]);
 
   // ── Step 3 helpers ────────────────────────────────────────────────────────
 
@@ -246,11 +221,9 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         method: "POST",
         headers,
         body: JSON.stringify({
-          barber_id: selectedBarber!.id,
           haircut_id: selectedService!.id,
           appointment_date: selectedDate ? format(selectedDate, "yyyy-MM-dd") : "",
-          appointment_time: selectedTime,
-          total_price: selectedService!.price,
+          time_slot: selectedTime,
         }),
       });
 
@@ -476,7 +449,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   <p className="text-black/55 max-w-sm mx-auto text-sm leading-relaxed">
                     {`Thanks, ${user?.name ?? ""}. Your ${selectedService?.name} on ${
                       selectedDate ? format(selectedDate, "EEE, MMM d") : ""
-                    } at ${selectedTime} with ${selectedBarber?.name} is confirmed.`}
+                    } at ${selectedTime} is confirmed. A barber will be assigned to you.`}
                   </p>
 
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">

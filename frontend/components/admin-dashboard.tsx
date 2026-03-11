@@ -22,7 +22,7 @@ interface Appointment {
 
 export function AdminDashboard({ user }: { user: AuthUser }) {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, accessToken } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'day' | 'week'>('day');
@@ -39,7 +39,9 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
       if (view === 'day') {
         url += `?date=${format(currentDate, 'yyyy-MM-dd')}`;
       }
-      const response = await fetch(url);
+      const headers: Record<string, string> = {};
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+      const response = await fetch(url, { headers });
       const data = await response.json();
       if (response.ok) {
         setAppointments(data.appointments ?? []);
@@ -53,9 +55,11 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
 
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
       const response = await fetch(`/api/appointments/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ status: newStatus })
       });
       if (response.ok) {
@@ -313,17 +317,21 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
 }
 
 function AnalyticsTab() {
+  const { accessToken } = useAuth();
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('week');
 
   useEffect(() => {
     fetchAnalytics();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch(`/api/analytics?period=${period}`);
+      const headers: Record<string, string> = {};
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+      const response = await fetch(`/api/analytics?period=${period}`, { headers });
       const data = await response.json();
       if (response.ok) setAnalytics(data);
     } catch {
@@ -430,16 +438,20 @@ function AnalyticsTab() {
 }
 
 function CRMTab() {
+  const { accessToken } = useAuth();
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchCustomers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCustomers = async () => {
     try {
-      const response = await fetch('/api/customers');
+      const headers: Record<string, string> = {};
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+      const response = await fetch('/api/customers', { headers });
       const data = await response.json();
       if (response.ok) setCustomers(data.customers);
     } catch {
@@ -451,9 +463,11 @@ function CRMTab() {
 
   const handleUpdateCustomer = async (userId: number, field: string, value: string) => {
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
       const response = await fetch('/api/customers', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ user_id: userId, [field]: value })
       });
       if (response.ok) {
@@ -539,6 +553,7 @@ interface Haircut {
 }
 
 function ServicesTab() {
+  const { accessToken } = useAuth();
   const [haircuts, setHaircuts] = useState<Haircut[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -576,9 +591,11 @@ function ServicesTab() {
     }
     setSaving(true);
     try {
+      const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) authHeaders['Authorization'] = `Bearer ${accessToken}`;
       const res = await fetch('/api/haircuts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({ name: newName.trim(), price, description: newDesc.trim() || null }),
       });
       if (res.ok) {

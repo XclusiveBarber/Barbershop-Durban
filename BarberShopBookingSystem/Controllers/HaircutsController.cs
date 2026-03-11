@@ -14,8 +14,11 @@ namespace BarberShopBookingSystem.Controllers
         public HaircutsController(ApplicationDbContext context) => _context = context;
 
         [HttpGet]
-        public async Task<IActionResult> GetHaircuts() =>
-            Ok(await _context.Haircuts.ToListAsync());
+        public async Task<IActionResult> GetHaircuts()
+        {
+            var haircuts = await _context.Haircuts.ToListAsync();
+            return Ok(new { haircuts });
+        }
 
         [HttpPost]
         [Authorize(Roles = "admin")]

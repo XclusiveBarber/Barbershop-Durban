@@ -32,13 +32,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = builder.Configuration["Supabase:Url"];
+        var supabaseUrl = builder.Configuration["Supabase:Url"];
+        var issuer = $"{supabaseUrl}/auth/v1"; // Supabase JWTs use /auth/v1 as the issuer
+
+        options.Authority = issuer;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Supabase:Url"],
+            ValidIssuer = issuer,
             ValidateAudience = true,
-            ValidAudience = "authenticated", // Supabase user JWTs always have aud = "authenticated"
+            ValidAudience = "authenticated",
             ValidateLifetime = true,
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["Supabase:JwtSecret"])

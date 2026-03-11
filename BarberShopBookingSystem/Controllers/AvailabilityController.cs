@@ -36,11 +36,7 @@ namespace BarberShopBookingSystem.Controllers
 
             // Load all non-cancelled appointments for the requested date
             var bookedSlots = await _context.Appointments
-                .Where(a =>
-                    a.AppointmentDate.Year == targetDate.Year &&
-                    a.AppointmentDate.Month == targetDate.Month &&
-                    a.AppointmentDate.Day == targetDate.Day &&
-                    a.Status != "cancelled")
+                .Where(a => a.AppointmentDate == targetDate && a.Status != "cancelled")
                 .GroupBy(a => a.TimeSlot)
                 .Select(g => new { TimeSlot = g.Key, Count = g.Count() })
                 .ToListAsync();

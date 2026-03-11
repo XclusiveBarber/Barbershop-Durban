@@ -62,10 +62,7 @@ namespace BarberShopBookingSystem.Controllers
 
             if (!string.IsNullOrEmpty(date) && DateOnly.TryParse(date, out var targetDate))
             {
-                query = query.Where(a =>
-                    a.AppointmentDate.Year == targetDate.Year &&
-                    a.AppointmentDate.Month == targetDate.Month &&
-                    a.AppointmentDate.Day == targetDate.Day);
+                query = query.Where(a => a.AppointmentDate == targetDate);
             }
 
             var appointments = await query
@@ -117,10 +114,10 @@ namespace BarberShopBookingSystem.Controllers
             if (userIdClaim == null) return Unauthorized();
             var userId = Guid.Parse(userIdClaim);
 
-            var appointmentDateUtc = dto.AppointmentDate.Date;
+            var appointmentDateUtc = dto.AppointmentDate;
 
             // POLICY: 30-Minute Minimum Notice
-            if (DateTime.TryParse($"{appointmentDateUtc.ToShortDateString()} {dto.TimeSlot}", out DateTime requestedTime))
+            if (DateTime.TryParse($"{dto.AppointmentDate.ToString("yyyy-MM-dd")} {dto.TimeSlot}", out DateTime requestedTime))
             {
                 var localTimeNow = DateTime.UtcNow.AddHours(2); // SAST timezone
                 if (requestedTime < localTimeNow.AddMinutes(30))
@@ -132,13 +129,10 @@ namespace BarberShopBookingSystem.Controllers
 
             // POLICY: Auto-Assign Available Barber (Load Balanced)
             var allActiveBarbers = await _context.Barbers.Where(b => b.Available).ToListAsync();
-            var targetDate = dto.AppointmentDate.Date;
+            var targetDate = dto.AppointmentDate;
 
             var todaysAppointments = await _context.Appointments
-                .Where(a => a.AppointmentDate.Year == targetDate.Year &&
-                            a.AppointmentDate.Month == targetDate.Month &&
-                            a.AppointmentDate.Day == targetDate.Day &&
-                            a.Status != "cancelled")
+                .Where(a => a.AppointmentDate == targetDate && a.Status != "cancelled")
                 .ToListAsync();
 
             var bookedBarberIdsForSlot = todaysAppointments
@@ -224,7 +218,7 @@ namespace BarberShopBookingSystem.Controllers
             if (appointment.RescheduleCount >= 1)
                 return BadRequest("Policy: Only one reschedule allowed. Please make a new booking.");
 
-            if (DateTime.TryParse($"{appointment.AppointmentDate.ToShortDateString()} {appointment.TimeSlot}", out DateTime currentScheduledTime))
+            if (DateTime.TryParse($"{appointment.AppointmentDate.ToString("yyyy-MM-dd")} {appointment.TimeSlot}", out DateTime currentScheduledTime))
             {
                 var localTimeNow = DateTime.UtcNow.AddHours(2);
                 var timeUntilAppointment = currentScheduledTime - localTimeNow;
@@ -232,16 +226,18 @@ namespace BarberShopBookingSystem.Controllers
                     return BadRequest("Policy: Rescheduling requires at least 2 hours' notice.");
             }
 
+            var newDate = DateOnly.FromDateTime(dto.NewDate);
+
             var conflict = await _context.Appointments.AnyAsync(a =>
                 a.Id != id &&
                 a.BarberId == appointment.BarberId &&
-                a.AppointmentDate == dto.NewDate.Date &&
+                a.AppointmentDate == newDate &&
                 a.TimeSlot == dto.NewTime &&
                 a.Status != "cancelled");
 
             if (conflict) return BadRequest("The new time slot is already taken.");
 
-            appointment.AppointmentDate = dto.NewDate.Date;
+            appointment.AppointmentDate = newDate;
             appointment.TimeSlot = dto.NewTime;
             appointment.RescheduleCount++;
             await _context.SaveChangesAsync();
@@ -277,7 +273,7 @@ namespace BarberShopBookingSystem.Controllers
 
             var profile = await _context.Profiles.FindAsync(appointment.UserId);
             if (profile != null && !string.IsNullOrEmpty(profile.Email))
-                await emailService.SendCancellationEmail(profile.Email, appointment.AppointmentDate.ToShortDateString(), appointment.TimeSlot);
+                await emailService.SendCancellationEmail(profile.Email, appointment.AppointmentDate.ToString("yyyy-MM-dd"), appointment.TimeSlot);
 
             return Ok("Appointment cancelled and notification sent.");
         }

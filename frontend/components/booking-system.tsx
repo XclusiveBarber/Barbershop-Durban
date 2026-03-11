@@ -228,8 +228,19 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create appointment");
+        let errorMessage = "Failed to create appointment";
+        try {
+          const text = await response.text();
+          if (text) {
+            try {
+              const error = JSON.parse(text);
+              errorMessage = error.error || error.message || error || errorMessage;
+            } catch {
+              errorMessage = text;
+            }
+          }
+        } catch { /* ignore */ }
+        throw new Error(errorMessage);
       }
 
       toast.success("Booking confirmed! We'll be in touch shortly.");

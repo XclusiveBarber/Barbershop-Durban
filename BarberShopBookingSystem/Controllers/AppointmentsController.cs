@@ -111,7 +111,7 @@ namespace BarberShopBookingSystem.Controllers
         public async Task<IActionResult> CreateAppointment([FromBody] AppointmentCreateDto dto)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (userIdClaim == null) return Unauthorized();
+            if (userIdClaim == null) return Unauthorized(new { error = "Unauthorized. Please log in again." });
             var userId = Guid.Parse(userIdClaim);
 
             var appointmentDateUtc = dto.AppointmentDate;
@@ -121,11 +121,11 @@ namespace BarberShopBookingSystem.Controllers
             {
                 var localTimeNow = DateTime.UtcNow.AddHours(2); // SAST timezone
                 if (requestedTime < localTimeNow.AddMinutes(30))
-                    return BadRequest("Appointments must be booked at least 30 minutes in advance.");
+                    return BadRequest(new { error = "Appointments must be booked at least 30 minutes in advance." });
             }
 
             var haircut = await _context.Haircuts.FindAsync(dto.HaircutId);
-            if (haircut == null) return NotFound("Haircut not found");
+            if (haircut == null) return NotFound(new { error = "Haircut not found" });
 
             // POLICY: Auto-Assign Available Barber (Load Balanced)
             var allActiveBarbers = await _context.Barbers.Where(b => b.Available).ToListAsync();
@@ -147,7 +147,7 @@ namespace BarberShopBookingSystem.Controllers
                 .FirstOrDefault();
 
             if (assignedBarber == null)
-                return BadRequest("No barbers are available for this time slot. Please choose another time.");
+                return BadRequest(new { error = "No barbers are available for this time slot. Please choose another time." });
 
             decimal finalPrice = haircut.Price;
             if (dto.DiscountAmount > 0) finalPrice -= dto.DiscountAmount;

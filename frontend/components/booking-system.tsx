@@ -234,7 +234,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
           if (text) {
             try {
               const error = JSON.parse(text);
-              errorMessage = error.error || error.message || error || errorMessage;
+              errorMessage = error.error || error.message || error.title || (typeof error === "string" ? error : null) || errorMessage;
             } catch {
               errorMessage = text;
             }

@@ -43,7 +43,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
       const response = await fetch('/api/appointments/all', { headers });
       const data = await response.json();
-      if (response.ok) setAppointments(data.appointments ?? []);
+      if (response.ok) setAppointments(Array.isArray(data) ? data : (data.appointments ?? []));
       else toast.error('Failed to load appointments');
     } catch {
       toast.error('Failed to load appointments');

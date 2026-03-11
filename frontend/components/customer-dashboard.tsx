@@ -40,7 +40,7 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
       const response = await fetch('/api/appointments/my-appointments', { headers });
       const data = await response.json();
       if (response.ok) {
-        setAppointments(data.appointments ?? []);
+        setAppointments(Array.isArray(data) ? data : (data.appointments ?? []));
       } else {
         toast.error(data.error || 'Failed to load appointments');
       }

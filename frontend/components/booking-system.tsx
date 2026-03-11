@@ -157,12 +157,12 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
 
         if (servicesRes.ok) {
           const data = await servicesRes.json();
-          setServices(data.haircuts || []);
+          setServices(Array.isArray(data) ? data : (data.haircuts || []));
         }
 
         if (barbersRes.ok) {
           const data = await barbersRes.json();
-          setBarbers(data.barbers || []);
+          setBarbers(Array.isArray(data) ? data : (data.barbers || []));
         }
       } catch (error) {
         console.error("Failed to load booking data:", error);

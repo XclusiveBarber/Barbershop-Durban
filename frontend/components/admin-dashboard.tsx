@@ -44,7 +44,7 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
       const response = await fetch(url, { headers });
       const data = await response.json();
       if (response.ok) {
-        setAppointments(data.appointments ?? []);
+        setAppointments(Array.isArray(data) ? data : (data.appointments ?? []));
       }
     } catch {
       // silently handle
@@ -453,7 +453,7 @@ function CRMTab() {
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
       const response = await fetch('/api/customers', { headers });
       const data = await response.json();
-      if (response.ok) setCustomers(data.customers);
+      if (response.ok) setCustomers(Array.isArray(data) ? data : (data.customers ?? []));
     } catch {
       // silently handle
     } finally {
@@ -570,7 +570,7 @@ function ServicesTab() {
     try {
       const res = await fetch('/api/haircuts');
       const data = await res.json();
-      if (res.ok) setHaircuts(data.haircuts ?? []);
+      if (res.ok) setHaircuts(Array.isArray(data) ? data : (data.haircuts ?? []));
     } catch {
       toast.error('Failed to load services');
     } finally {

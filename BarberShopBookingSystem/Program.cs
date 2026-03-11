@@ -2,7 +2,6 @@ using BarberShopBookingSystem.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using Resend; // Added for the Resend email client
 using BarberShopBookingSystem.Services; // Added to locate your new EmailService
 
@@ -35,7 +34,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         var supabaseUrl = builder.Configuration["Supabase:Url"];
         var issuer = $"{supabaseUrl}/auth/v1"; // Supabase JWTs use /auth/v1 as the issuer
 
+        // Authority tells ASP.NET Core to fetch the JWKS from Supabase's
+        // OpenID Connect discovery endpoint ({issuer}/.well-known/openid-configuration).
+        // This handles ES256 tokens automatically — do NOT also set IssuerSigningKey
+        // here as that would override JWKS discovery and cause 401s for ES256 tokens.
         options.Authority = issuer;
+        options.RequireHttpsMetadata = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -43,9 +47,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidAudience = "authenticated",
             ValidateLifetime = true,
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Supabase:JwtSecret"])
-            )
         };
     });
 

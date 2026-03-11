@@ -37,7 +37,7 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
       const headers: Record<string, string> = {};
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
-      const response = await fetch('/api/appointments', { headers });
+      const response = await fetch('/api/appointments/my-appointments', { headers });
       const data = await response.json();
       if (response.ok) {
         setAppointments(data.appointments ?? []);

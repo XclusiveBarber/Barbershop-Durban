@@ -7,10 +7,9 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
-    // Proxy all database/API routes to the Express backend.
-    // Auth routes (/api/auth/*) are handled by Next.js itself because they
-    // need to set/clear the Supabase SSR session cookies on the same origin.
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+    // Proxy all database/API routes to the C# ASP.NET Core backend.
+    // Auth routes (/api/auth/*) are handled by Next.js itself.
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5280';
     return [
       {
         source: '/api/appointments/:path*',
@@ -33,8 +32,9 @@ const nextConfig = {
         destination: `${backendUrl}/api/analytics/:path*`,
       },
       {
+        // Map /api/customers to /api/profiles on the C# backend
         source: '/api/customers/:path*',
-        destination: `${backendUrl}/api/customers/:path*`,
+        destination: `${backendUrl}/api/profiles/:path*`,
       },
     ];
   },

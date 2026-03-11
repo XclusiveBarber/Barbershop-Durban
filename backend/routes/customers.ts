@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { Router, Request, Response } from 'express';
+import { supabase } from '../lib/supabase';
 
-// GET - Fetch all customer profiles with visit counts
-export async function GET() {
+const router = Router();
+
+// GET /api/customers - Fetch all customer profiles with visit counts
+router.get('/', async (_req: Request, res: Response) => {
   try {
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
@@ -11,7 +13,7 @@ export async function GET() {
 
     if (profilesError) {
       console.error('[customers] Profiles error:', profilesError.message);
-      return NextResponse.json({ error: profilesError.message }, { status: 500 });
+      return res.status(500).json({ error: profilesError.message });
     }
 
     // Get completed appointments for visit counts
@@ -25,13 +27,13 @@ export async function GET() {
     }
 
     const apptsByUser: Record<string, string[]> = {};
-    (appointments ?? []).forEach(a => {
+    (appointments ?? []).forEach((a: any) => {
       if (!apptsByUser[a.user_id]) apptsByUser[a.user_id] = [];
       apptsByUser[a.user_id].push(a.appointment_date);
     });
 
-    const customers = (profiles ?? []).map(p => {
-      const dates = (apptsByUser[p.id] ?? []).sort((a, b) => b.localeCompare(a));
+    const customers = (profiles ?? []).map((p: any) => {
+      const dates = (apptsByUser[p.id] ?? []).sort((a: string, b: string) => b.localeCompare(a));
       return {
         id: p.id,
         name: p.full_name,
@@ -44,23 +46,32 @@ export async function GET() {
       };
     });
 
-    customers.sort((a, b) => b.total_appointments - a.total_appointments);
+    customers.sort((a: any, b: any) => b.total_appointments - a.total_appointments);
 
-    return NextResponse.json({ customers });
+    return res.json({ customers });
   } catch (error) {
     console.error('[customers] Unexpected error:', error);
-    return NextResponse.json({ error: 'Failed to fetch customers' }, { status: 500 });
+    return res.status(500).json({ error: 'Failed to fetch customers' });
   }
-}
+});
 
-// PATCH - Update customer notes/preferences
-export async function PATCH(request: NextRequest) {
+// GET /api/customers/:id - Get single customer
+router.get('/:id', async (_req: Request, res: Response) => {
   try {
-    const body = await request.json();
-    const { user_id, preferences, notes } = body;
+    return res.status(404).json({ error: 'Customer not found' });
+  } catch (error: any) {
+    console.error('[customers] Get customer detail error:', error);
+    return res.status(500).json({ error: 'Failed to fetch customer details' });
+  }
+});
+
+// PATCH /api/customers - Update customer notes/preferences
+router.patch('/', async (req: Request, res: Response) => {
+  try {
+    const { user_id, preferences, notes } = req.body;
 
     if (!user_id) {
-      return NextResponse.json({ error: 'user_id is required' }, { status: 400 });
+      return res.status(400).json({ error: 'user_id is required' });
     }
 
     const updates: Record<string, string> = {};
@@ -79,9 +90,11 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
     console.error('[customers] PATCH error:', error);
-    return NextResponse.json({ error: 'Failed to update customer' }, { status: 500 });
+    return res.status(500).json({ error: 'Failed to update customer' });
   }
-}
+});
+
+export default router;

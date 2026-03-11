@@ -1,7 +1,10 @@
-import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { Router, Request, Response } from 'express';
+import { supabase } from '../lib/supabase';
 
-export async function GET() {
+const router = Router();
+
+// GET /api/barbers - List all available barbers
+router.get('/', async (_req: Request, res: Response) => {
   try {
     const { data, error } = await supabase
       .from('barbers')
@@ -10,7 +13,7 @@ export async function GET() {
 
     if (error) {
       console.error('[supabase] Get barbers error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return res.status(500).json({ error: error.message });
     }
 
     const barbers = (data ?? []).map((barber: any) => ({
@@ -21,9 +24,11 @@ export async function GET() {
       available: barber.available,
     }));
 
-    return NextResponse.json({ barbers });
+    return res.json({ barbers });
   } catch (error) {
     console.error('[supabase] Get barbers error:', error);
-    return NextResponse.json({ error: 'Failed to fetch barbers' }, { status: 500 });
+    return res.status(500).json({ error: 'Failed to fetch barbers' });
   }
-}
+});
+
+export default router;

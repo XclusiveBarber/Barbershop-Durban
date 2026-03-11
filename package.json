@@ -2,9 +2,16 @@
   "name": "xclusive-barber-booking-root",
   "private": true,
   "scripts": {
-    "dev": "pnpm --prefix frontend dev",
-    "build": "pnpm --prefix frontend build",
-    "start": "pnpm --prefix frontend start",
+    "dev": "concurrently \"pnpm --prefix backend dev\" \"pnpm --prefix frontend dev\"",
+    "dev:frontend": "pnpm --prefix frontend dev",
+    "dev:backend": "pnpm --prefix backend dev",
+    "build": "pnpm --prefix backend build && pnpm --prefix frontend build",
+    "build:frontend": "pnpm --prefix frontend build",
+    "build:backend": "pnpm --prefix backend build",
+    "start": "pnpm --prefix backend start & pnpm --prefix frontend start",
     "lint": "pnpm --prefix frontend lint"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }

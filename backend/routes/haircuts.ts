@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { Router, Request, Response } from 'express';
+import { supabase } from '../lib/supabase';
+
+const router = Router();
 
 /**
- * GET - Fetch all haircuts/services
+ * GET /api/haircuts - Fetch all haircuts/services
  */
-export async function GET() {
+router.get('/', async (_req: Request, res: Response) => {
   try {
     const { data, error } = await supabase
       .from('haircuts')
@@ -13,7 +15,7 @@ export async function GET() {
 
     if (error) {
       console.error('[supabase] Get haircuts error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return res.status(500).json({ error: error.message });
     }
 
     const haircuts = (data ?? []).map((haircut: any) => ({
@@ -24,23 +26,22 @@ export async function GET() {
       image_url: haircut.image_url || '/placeholder.svg?height=300&width=300',
     }));
 
-    return NextResponse.json({ haircuts });
+    return res.json({ haircuts });
   } catch (error) {
     console.error('[supabase] Get haircuts error:', error);
-    return NextResponse.json({ error: 'Failed to fetch haircuts' }, { status: 500 });
+    return res.status(500).json({ error: 'Failed to fetch haircuts' });
   }
-}
+});
 
 /**
- * POST - Create new haircut (admin only)
+ * POST /api/haircuts - Create new haircut (admin only)
  */
-export async function POST(request: NextRequest) {
+router.post('/', async (req: Request, res: Response) => {
   try {
-    const body = await request.json();
-    const { name, price, description, image_url } = body;
+    const { name, price, description, image_url } = req.body;
 
     if (!name || !price) {
-      return NextResponse.json({ error: 'Name and price are required' }, { status: 400 });
+      return res.status(400).json({ error: 'Name and price are required' });
     }
 
     const { data, error } = await supabase
@@ -56,12 +57,14 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[supabase] Create haircut error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return res.status(500).json({ error: error.message });
     }
 
-    return NextResponse.json({ success: true, haircut: data });
+    return res.json({ success: true, haircut: data });
   } catch (error) {
     console.error('[supabase] Create haircut error:', error);
-    return NextResponse.json({ error: 'Failed to create haircut' }, { status: 500 });
+    return res.status(500).json({ error: 'Failed to create haircut' });
   }
-}
+});
+
+export default router;

@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { Router, Request, Response } from 'express';
+import { supabase } from '../lib/supabase';
 import { subDays, subWeeks, subMonths, subYears, format } from 'date-fns';
 
-export async function GET(request: NextRequest) {
+const router = Router();
+
+// GET /api/analytics - Dashboard analytics
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const period = searchParams.get('period') || 'week';
+    const period = (req.query.period as string) || 'week';
 
     const now = new Date();
     let startDate: Date;
@@ -37,21 +39,21 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('[analytics] Supabase error:', error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return res.status(500).json({ error: error.message });
     }
 
     const appts = appointments ?? [];
-    const completed  = appts.filter(a => a.status === 'completed');
-    const cancelled  = appts.filter(a => a.status === 'cancelled');
+    const completed  = appts.filter((a: any) => a.status === 'completed');
+    const cancelled  = appts.filter((a: any) => a.status === 'cancelled');
 
-    const totalRevenue = completed.reduce((sum, a) => {
+    const totalRevenue = completed.reduce((sum: number, a: any) => {
       const price = a.total_price ?? (a.haircuts as any)?.price ?? 0;
       return sum + Number(price);
     }, 0);
 
     // Popular services
     const serviceMap: Record<string, number> = {};
-    appts.forEach(a => {
+    appts.forEach((a: any) => {
       const name = (a.haircuts as any)?.name ?? 'Unknown';
       serviceMap[name] = (serviceMap[name] || 0) + 1;
     });
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     // Barber stats
     const barberMap: Record<string, { appointments: number; revenue: number }> = {};
-    appts.forEach(a => {
+    appts.forEach((a: any) => {
       const name = (a.barbers as any)?.full_name ?? 'Unassigned';
       if (!barberMap[name]) barberMap[name] = { appointments: 0, revenue: 0 };
       barberMap[name].appointments++;
@@ -76,12 +78,12 @@ export async function GET(request: NextRequest) {
     }));
 
     // Customer metrics
-    const uniqueCustomers = new Set(appts.map(a => a.user_id)).size;
+    const uniqueCustomers = new Set(appts.map((a: any) => a.user_id)).size;
     const cancellationRate = appts.length > 0
       ? ((cancelled.length / appts.length) * 100).toFixed(1)
       : '0';
 
-    return NextResponse.json({
+    return res.json({
       period,
       dateRange: { start: startStr, end: endStr },
       revenue: {
@@ -103,6 +105,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('[analytics] Unexpected error:', error);
-    return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: 500 });
+    return res.status(500).json({ error: 'Failed to fetch analytics' });
   }
-}
+});
+
+export default router;

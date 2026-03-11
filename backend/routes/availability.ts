@@ -1,21 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { Router, Request, Response } from 'express';
+import { supabase } from '../lib/supabase';
+
+const router = Router();
 
 // Define time slots for the barbershop
 const TIME_SLOTS = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'];
 
 /**
- * GET - Get available time slots for a barber on a specific date
+ * GET /api/availability - Get available time slots for a barber on a specific date
  * Query params: barber_id, date
  */
-export async function GET(request: NextRequest) {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const barber_id = searchParams.get('barber_id');
-    const date = searchParams.get('date');
+    const barber_id = req.query.barber_id as string | undefined;
+    const date = req.query.date as string | undefined;
 
     if (!barber_id || !date) {
-      return NextResponse.json({ error: 'barber_id and date are required' }, { status: 400 });
+      return res.status(400).json({ error: 'barber_id and date are required' });
     }
 
     // Get all appointments for this barber on this date
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('[supabase] Get availability error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return res.status(500).json({ error: error.message });
     }
 
     // Get booked time slots
@@ -37,9 +38,11 @@ export async function GET(request: NextRequest) {
     // Return available slots
     const availableSlots = TIME_SLOTS.filter(slot => !bookedSlots.includes(slot));
 
-    return NextResponse.json({ available_slots: availableSlots, booked_slots: bookedSlots });
+    return res.json({ available_slots: availableSlots, booked_slots: bookedSlots });
   } catch (error) {
     console.error('[supabase] Get availability error:', error);
-    return NextResponse.json({ error: 'Failed to fetch availability' }, { status: 500 });
+    return res.status(500).json({ error: 'Failed to fetch availability' });
   }
-}
+});
+
+export default router;

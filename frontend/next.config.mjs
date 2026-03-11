@@ -6,6 +6,38 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  async rewrites() {
+    // Proxy all database/API routes to the Express backend.
+    // Auth routes (/api/auth/*) are handled by Next.js itself because they
+    // need to set/clear the Supabase SSR session cookies on the same origin.
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+    return [
+      {
+        source: '/api/appointments/:path*',
+        destination: `${backendUrl}/api/appointments/:path*`,
+      },
+      {
+        source: '/api/availability/:path*',
+        destination: `${backendUrl}/api/availability/:path*`,
+      },
+      {
+        source: '/api/barbers/:path*',
+        destination: `${backendUrl}/api/barbers/:path*`,
+      },
+      {
+        source: '/api/haircuts/:path*',
+        destination: `${backendUrl}/api/haircuts/:path*`,
+      },
+      {
+        source: '/api/analytics/:path*',
+        destination: `${backendUrl}/api/analytics/:path*`,
+      },
+      {
+        source: '/api/customers/:path*',
+        destination: `${backendUrl}/api/customers/:path*`,
+      },
+    ];
+  },
 }
 
 export default nextConfig

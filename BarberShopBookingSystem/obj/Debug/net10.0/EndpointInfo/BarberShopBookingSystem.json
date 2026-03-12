@@ -5,7 +5,29 @@
     "version": "1.0"
   },
   "paths": {
-    "/api/Appointments": {
+    "/api/Analytics": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "week"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Appointments/my-appointments": {
       "get": {
         "tags": [
           "Appointments"
@@ -15,7 +37,30 @@
             "description": "OK"
           }
         }
-      },
+      }
+    },
+    "/api/Appointments/all": {
+      "get": {
+        "tags": [
+          "Appointments"
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Appointments": {
       "post": {
         "tags": [
           "Appointments"
@@ -46,11 +91,62 @@
         }
       }
     },
-    "/api/Appointments/my-appointments": {
-      "get": {
+    "/api/Appointments/{id}": {
+      "delete": {
         "tags": [
           "Appointments"
         ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Appointments"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -158,6 +254,27 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Availability": {
+      "get": {
+        "tags": [
+          "Availability"
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -365,6 +482,37 @@
         }
       }
     },
+    "/api/Payments/confirm": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPaymentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPaymentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPaymentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Profiles": {
       "get": {
         "tags": [
@@ -396,6 +544,29 @@
               "schema": {
                 "$ref": "#/components/schemas/Profile"
               }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Profiles"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { }
+            },
+            "text/json": {
+              "schema": { }
+            },
+            "application/*+json": {
+              "schema": { }
             }
           }
         },
@@ -475,23 +646,23 @@
       "AppointmentCreateDto": {
         "type": "object",
         "properties": {
-          "haircutId": {
+          "haircut_id": {
             "type": "string",
             "format": "uuid"
           },
-          "appointmentDate": {
+          "appointment_date": {
             "type": "string",
-            "format": "date-time"
+            "format": "date"
           },
-          "timeSlot": {
+          "time_slot": {
             "type": "string",
             "nullable": true
           },
-          "discountAmount": {
+          "discount_amount": {
             "type": "number",
             "format": "double"
           },
-          "discountCode": {
+          "discount_code": {
             "type": "string",
             "nullable": true
           }
@@ -505,7 +676,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "fullName": {
+          "full_name": {
             "type": "string",
             "nullable": true
           },
@@ -513,12 +684,22 @@
             "type": "string",
             "nullable": true
           },
-          "imageUrl": {
+          "image_url": {
             "type": "string",
             "nullable": true
           },
           "available": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmPaymentRequest": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -542,7 +723,7 @@
             "type": "string",
             "nullable": true
           },
-          "imageUrl": {
+          "image_url": {
             "type": "string",
             "nullable": true
           }
@@ -555,6 +736,10 @@
           "amount": {
             "type": "number",
             "format": "double"
+          },
+          "appointment_id": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -566,7 +751,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "fullName": {
+          "full_name": {
             "type": "string",
             "nullable": true
           },
@@ -584,11 +769,21 @@
       "RescheduleDto": {
         "type": "object",
         "properties": {
-          "newDate": {
+          "new_date": {
             "type": "string",
             "format": "date-time"
           },
-          "newTime": {
+          "new_time": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
             "type": "string",
             "nullable": true
           }
@@ -599,7 +794,13 @@
   },
   "tags": [
     {
+      "name": "Analytics"
+    },
+    {
       "name": "Appointments"
+    },
+    {
+      "name": "Availability"
     },
     {
       "name": "Barbers"

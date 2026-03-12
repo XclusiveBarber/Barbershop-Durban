@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "oIDWw5l6NPc=",
+  "dgSpecHash": "pj+m+zJglm0=",
   "success": true,
-  "projectFilePath": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj",
+  "projectFilePath": "C:\\Users\\andzi\\source\\repos\\LupryM\\Barbershop-Durban\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\andzi\\.nuget\\packages\\efcore.namingconventions\\10.0.1\\efcore.namingconventions.10.0.1.nupkg.sha512",
     "C:\\Users\\andzi\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
@@ -55,9 +55,9 @@
       "code": "NU1510",
       "level": "Warning",
       "message": "PackageReference Microsoft.Extensions.Configuration.Json will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
-      "projectPath": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj",
+      "projectPath": "C:\\Users\\andzi\\source\\repos\\LupryM\\Barbershop-Durban\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj",
+      "filePath": "C:\\Users\\andzi\\source\\repos\\LupryM\\Barbershop-Durban\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj",
       "libraryId": "Microsoft.Extensions.Configuration.Json",
       "targetGraphs": [
         "net10.0"

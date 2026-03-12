@@ -1,12 +1,18 @@
 [
   {
-    "ContainingType": "BarberShopBookingSystem.Controllers.AppointmentsController",
-    "Method": "GetAllAppointments",
-    "RelativePath": "api/Appointments",
+    "ContainingType": "BarberShopBookingSystem.Controllers.AnalyticsController",
+    "Method": "GetAnalytics",
+    "RelativePath": "api/Analytics",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "period",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -20,6 +26,43 @@
       {
         "Name": "dto",
         "Type": "BarberShopBookingSystem.Models.AppointmentCreateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BarberShopBookingSystem.Controllers.AppointmentsController",
+    "Method": "DeleteAppointment",
+    "RelativePath": "api/Appointments/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BarberShopBookingSystem.Controllers.AppointmentsController",
+    "Method": "UpdateAppointmentStatus",
+    "RelativePath": "api/Appointments/{id}",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "BarberShopBookingSystem.Controllers.UpdateStatusDto",
         "IsRequired": true
       }
     ],
@@ -85,12 +128,44 @@
   },
   {
     "ContainingType": "BarberShopBookingSystem.Controllers.AppointmentsController",
+    "Method": "GetAllAppointments",
+    "RelativePath": "api/Appointments/all",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "date",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BarberShopBookingSystem.Controllers.AppointmentsController",
     "Method": "GetMyAppointments",
     "RelativePath": "api/Appointments/my-appointments",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
     "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BarberShopBookingSystem.Controllers.AvailabilityController",
+    "Method": "GetAvailability",
+    "RelativePath": "api/Availability",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "date",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -189,6 +264,22 @@
   },
   {
     "ContainingType": "BarberShopBookingSystem.Controllers.PaymentsController",
+    "Method": "ConfirmPayment",
+    "RelativePath": "api/Payments/confirm",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BarberShopBookingSystem.Controllers.ConfirmPaymentRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BarberShopBookingSystem.Controllers.PaymentsController",
     "Method": "CreateCheckout",
     "RelativePath": "api/Payments/create-checkout",
     "HttpMethod": "POST",
@@ -224,6 +315,22 @@
       {
         "Name": "profile",
         "Type": "BarberShopBookingSystem.Models.Profile",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BarberShopBookingSystem.Controllers.ProfilesController",
+    "Method": "UpdateCustomer",
+    "RelativePath": "api/Profiles",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "System.Object",
         "IsRequired": true
       }
     ],

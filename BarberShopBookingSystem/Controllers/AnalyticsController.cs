@@ -2,6 +2,9 @@ using BarberShopBookingSystem.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace BarberShopBookingSystem.Controllers
 {
@@ -18,21 +21,27 @@ namespace BarberShopBookingSystem.Controllers
         public async Task<IActionResult> GetAnalytics([FromQuery] string period = "week")
         {
             var now = DateTime.UtcNow.AddHours(2); // SAST
+
+            // This calculates as a DateTime
             var startDate = period switch
             {
-                "day"   => now.Date,
-                "week"  => now.AddDays(-7).Date,
+                "day" => now.Date,
+                "week" => now.AddDays(-7).Date,
                 "month" => now.AddMonths(-1).Date,
-                "year"  => now.AddYears(-1).Date,
-                _       => now.AddDays(-7).Date,
+                "year" => now.AddYears(-1).Date,
+                _ => now.AddDays(-7).Date,
             };
 
+            // THE FIX: Convert the DateTime to DateOnly before asking the database
+            var targetDate = DateOnly.FromDateTime(startDate);
+
+            // Now the database query will compare DateOnly to DateOnly perfectly
             var appointments = await _context.Appointments
-                .Where(a => a.AppointmentDate >= startDate)
+                .Where(a => a.AppointmentDate >= targetDate)
                 .ToListAsync();
 
-            var completed  = appointments.Where(a => a.Status == "completed").ToList();
-            var cancelled  = appointments.Where(a => a.Status == "cancelled").ToList();
+            var completed = appointments.Where(a => a.Status == "completed").ToList();
+            var cancelled = appointments.Where(a => a.Status == "cancelled").ToList();
             var totalRevenue = completed.Sum(a => a.TotalPrice);
             var cancellationRate = appointments.Count > 0
                 ? Math.Round((double)cancelled.Count / appointments.Count * 100, 1)

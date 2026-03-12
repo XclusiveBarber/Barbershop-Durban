@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj": {}
+    "C:\\Users\\andzi\\source\\repos\\LupryM\\Barbershop-Durban\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj": {}
   },
   "projects": {
-    "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj": {
+    "C:\\Users\\andzi\\source\\repos\\LupryM\\Barbershop-Durban\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj",
+        "projectUniqueName": "C:\\Users\\andzi\\source\\repos\\LupryM\\Barbershop-Durban\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj",
         "projectName": "BarberShopBookingSystem",
-        "projectPath": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj",
+        "projectPath": "C:\\Users\\andzi\\source\\repos\\LupryM\\Barbershop-Durban\\BarberShopBookingSystem\\BarberShopBookingSystem.csproj",
         "packagesPath": "C:\\Users\\andzi\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\andzi\\source\\repos\\Andziso-Mdaka\\BarberShopBookingSystem\\BarberShopBookingSystem\\obj\\",
+        "outputPath": "C:\\Users\\andzi\\source\\repos\\LupryM\\Barbershop-Durban\\BarberShopBookingSystem\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -112,7 +112,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.103/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.104/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",

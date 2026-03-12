@@ -1,9 +1,11 @@
 /**
- * Supabase Email OTP Authentication
+ * Supabase Authentication
  *
  * Handles:
  * - Send OTP to email
  * - Verify OTP and get session
+ * - Google OAuth sign-in
+ * - Email + Password sign-in / sign-up
  * - Fetch user profile
  * - Create/update profile
  */
@@ -141,6 +143,56 @@ export async function updateProfile(userId: string, updates: Partial<CreateProfi
 
   if (error) {
     throw new Error(error.message || 'Failed to update profile');
+  }
+
+  return data;
+}
+
+/**
+ * Sign in with Google OAuth — redirects to Google consent screen.
+ * After authentication, Google redirects to /auth/callback.
+ */
+export async function signInWithGoogle(redirectTo: string) {
+  const supabase = getSupabase();
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo },
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to sign in with Google');
+  }
+}
+
+/**
+ * Sign in with email + password
+ */
+export async function signInWithPassword(input: { email: string; password: string }) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: input.email,
+    password: input.password,
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Invalid email or password');
+  }
+
+  return data;
+}
+
+/**
+ * Sign up with email + password (creates a new Supabase auth user)
+ */
+export async function signUpWithPassword(input: { email: string; password: string }) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.auth.signUp({
+    email: input.email,
+    password: input.password,
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to create account');
   }
 
   return data;

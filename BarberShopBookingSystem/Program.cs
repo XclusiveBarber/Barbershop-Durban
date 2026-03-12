@@ -33,14 +33,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         var supabaseUrl = builder.Configuration["Supabase:Url"];
         var issuer = $"{supabaseUrl}/auth/v1"; // Supabase JWTs use /auth/v1 as the issuer
+        var jwtSecret = builder.Configuration["Supabase:JwtSecret"];
 
-        // Use MetadataAddress for more reliable OIDC discovery.
-        // This explicitly fetches the OpenID Connect configuration including JWKS
-        // for ES256 token validation, with better error handling and retry logic.
-        options.MetadataAddress = $"{issuer}/.well-known/openid-configuration";
-        options.RequireHttpsMetadata = true;
+        // Supabase uses HS256 (symmetric key) by default.
+        // Decode the base64 secret and use it directly for HMAC validation.
+        var keyBytes = Convert.FromBase64String(jwtSecret!);
+        var signingKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(keyBytes);
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = signingKey,
             ValidateIssuer = true,
             ValidIssuer = issuer,
             ValidateAudience = true,

@@ -33,17 +33,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         var supabaseUrl = builder.Configuration["Supabase:Url"];
         var issuer = $"{supabaseUrl}/auth/v1"; // Supabase JWTs use /auth/v1 as the issuer
-        var jwtSecret = builder.Configuration["Supabase:JwtSecret"];
 
-        // Supabase uses HS256 (symmetric key) by default.
-        // Decode the base64 secret and use it directly for HMAC validation.
-        var keyBytes = Convert.FromBase64String(jwtSecret!);
-        var signingKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(keyBytes);
+        // Supabase uses ES256 (asymmetric elliptic curve) for JWT signing.
+        // Fetch EC public keys directly from the JWKS endpoint at startup —
+        // more reliable on Azure than OIDC metadata discovery.
+        var jwksJson = new HttpClient()
+            .GetStringAsync($"{issuer}/.well-known/jwks.json")
+            .GetAwaiter().GetResult();
+        var signingKeys = new Microsoft.IdentityModel.Tokens.JsonWebKeySet(jwksJson).GetSigningKeys();
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = signingKey,
+            IssuerSigningKeys = signingKeys,
             ValidateIssuer = true,
             ValidIssuer = issuer,
             ValidateAudience = true,

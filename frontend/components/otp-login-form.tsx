@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Mail, Lock, User, ChevronRight, AlertCircle, ChevronLeft, Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth, type AuthUser } from "@/context/auth-context";
@@ -422,6 +423,18 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
                 }
                 <ChevronRight className="w-4 h-4" />
               </button>
+
+              {/* Forgot password link (signin only) */}
+              {pwMode === "signin" && (
+                <div className="text-center">
+                  <Link
+                    href="/auth/request-reset"
+                    className="text-xs text-black/40 hover:text-black transition-colors underline underline-offset-2"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+              )}
 
               {/* OTP fallback */}
               <div className="text-center pt-2">

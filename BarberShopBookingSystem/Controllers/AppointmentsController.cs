@@ -31,7 +31,7 @@ namespace BarberShopBookingSystem.Controllers
                 .ToListAsync();
 
             var haircutIds = appointments.Select(a => a.HaircutId).Distinct().ToList();
-            var barberIds = appointments.Select(a => a.BarberId).Distinct().ToList();
+            var barberIds = appointments.Where(a => a.BarberId.HasValue).Select(a => a.BarberId.Value).Distinct().ToList();
 
             var haircuts = await _context.Haircuts.Where(h => haircutIds.Contains(h.Id)).ToListAsync();
             var barbers = await _context.Barbers.Where(b => barberIds.Contains(b.Id)).ToListAsync();
@@ -49,7 +49,7 @@ namespace BarberShopBookingSystem.Controllers
                 a.PaymentStatus,
                 a.CreatedAt,
                 Haircuts = haircutMap.TryGetValue(a.HaircutId, out var hc) ? new { hc.Name, hc.Price } : null,
-                Barbers = barberMap.TryGetValue(a.BarberId, out var b) ? new { b.FullName } : null,
+                Barbers = a.BarberId.HasValue && barberMap.TryGetValue(a.BarberId.Value, out var b) ? new { b.FullName } : null,
             });
 
             return Ok(new { appointments = result });
@@ -72,7 +72,7 @@ namespace BarberShopBookingSystem.Controllers
                 .ToListAsync();
 
             var haircutIds = appointments.Select(a => a.HaircutId).Distinct().ToList();
-            var barberIds = appointments.Select(a => a.BarberId).Distinct().ToList();
+            var barberIds = appointments.Where(a => a.BarberId.HasValue).Select(a => a.BarberId.Value).Distinct().ToList();
             var userIds = appointments.Select(a => a.UserId).Distinct().ToList();
 
             var haircuts = await _context.Haircuts.Where(h => haircutIds.Contains(h.Id)).ToListAsync();
@@ -86,7 +86,7 @@ namespace BarberShopBookingSystem.Controllers
             var result = appointments.Select(a =>
             {
                 var haircut = haircutMap.TryGetValue(a.HaircutId, out var hc) ? hc : null;
-                var barber = barberMap.TryGetValue(a.BarberId, out var br) ? br : null;
+                var barber = a.BarberId.HasValue && barberMap.TryGetValue(a.BarberId.Value, out var br) ? br : null;
                 var profile = profileMap.TryGetValue(a.UserId, out var pr) ? pr : null;
 
                 return new
@@ -257,9 +257,14 @@ namespace BarberShopBookingSystem.Controllers
 
         // PUT /api/appointments/{id}/late-arrival 
         [HttpPut("{id}/late-arrival")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> HandleLateArrival(Guid id, [FromBody] int minutesLate)
         {
+            // Manual role check — Supabase JWTs don't carry app-level roles
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null) return Unauthorized();
+            var adminProfile = await _context.Profiles.FindAsync(Guid.Parse(userIdClaim));
+            if (adminProfile == null || adminProfile.Role != "admin") return Forbid();
+
             var appointment = await _context.Appointments.FindAsync(id);
             if (appointment == null) return NotFound();
 
@@ -272,9 +277,14 @@ namespace BarberShopBookingSystem.Controllers
 
         // PUT /api/appointments/{id}/cancel 
         [HttpPut("{id}/cancel")]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> CancelAppointment(Guid id, [FromServices] IEmailService emailService)
         {
+            // Manual role check — Supabase JWTs don't carry app-level roles
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null) return Unauthorized();
+            var adminProfile = await _context.Profiles.FindAsync(Guid.Parse(userIdClaim));
+            if (adminProfile == null || adminProfile.Role != "admin") return Forbid();
+
             var appointment = await _context.Appointments.FindAsync(id);
             if (appointment == null) return NotFound();
 

@@ -29,6 +29,9 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
   // True when the user already has a profile row but it has no full_name yet;
   // handleSaveName should update the existing row instead of inserting a new one.
   const [profileNeedsUpdate, setProfileNeedsUpdate] = useState(false);
+  // Preserve the role already set in the database when profileNeedsUpdate is true,
+  // so an admin- or manually-assigned role is never clobbered by "customer".
+  const [existingProfileRole, setExistingProfileRole] = useState<AuthUser["role"] | null>(null);
 
   const handleSendOtp = async () => {
     if (!email.trim()) {
@@ -95,6 +98,7 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
         // No profile yet, or profile exists but has no name — collect name.
         // If the profile row already exists we only need to update it.
         setProfileNeedsUpdate(!!profile);
+        if (profile?.role) setExistingProfileRole(profile.role as AuthUser["role"]);
         setSupabaseUserId(authUser.id);
         setStep("name");
       }
@@ -134,11 +138,14 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
         });
       }
 
+      // Use the role already stored in the database when the profile existed.
+      // Brand-new profiles are always "customer"; existing profiles keep their role
+      // (e.g. "barber" or "admin" set manually in Supabase).
       const userData: AuthUser = {
         id: supabaseUserId,
         email: email.trim(),
         name: name.trim(),
-        role: "customer",
+        role: profileNeedsUpdate ? (existingProfileRole ?? "customer") : "customer",
       };
 
       login(userData, accessToken ?? undefined);

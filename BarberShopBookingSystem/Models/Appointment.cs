@@ -4,7 +4,7 @@
     {
         public Guid Id { get; set; }
         public Guid UserId { get; set; }
-        public Guid BarberId { get; set; }
+        public Guid? BarberId { get; set; }
         public Guid HaircutId { get; set; }
         public DateOnly AppointmentDate { get; set; }
         public string TimeSlot { get; set; } = string.Empty;

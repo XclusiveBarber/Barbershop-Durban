@@ -10,7 +10,7 @@ namespace BarberShopBookingSystem.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "admin")]
+    [Authorize]
     public class AnalyticsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -20,6 +20,13 @@ namespace BarberShopBookingSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAnalytics([FromQuery] string period = "week")
         {
+            // Manual role check — Supabase JWTs don't carry app-level roles
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null) return Unauthorized();
+            var userId = Guid.Parse(userIdClaim);
+            var profile = await _context.Profiles.FindAsync(userId);
+            if (profile == null || profile.Role != "admin")
+                return Forbid();
             var now = DateTime.UtcNow.AddHours(2); // SAST
 
             // This calculates as a DateTime
@@ -63,12 +70,13 @@ namespace BarberShopBookingSystem.Controllers
                 .ToList();
 
             // Barber performance
-            var barberIds = appointments.Select(a => a.BarberId).Distinct().ToList();
+            var barberIds = appointments.Where(a => a.BarberId.HasValue).Select(a => a.BarberId.Value).Distinct().ToList();
             var barbers = await _context.Barbers.Where(b => barberIds.Contains(b.Id)).ToListAsync();
             var barberMap = barbers.ToDictionary(b => b.Id, b => b.FullName);
 
             var barberStats = appointments
-                .GroupBy(a => a.BarberId)
+                .Where(a => a.BarberId.HasValue)
+                .GroupBy(a => a.BarberId!.Value)
                 .Select(g => new
                 {
                     BarberName = barberMap.TryGetValue(g.Key, out var name) ? name : "Unknown",

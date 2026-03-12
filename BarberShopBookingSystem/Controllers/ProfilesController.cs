@@ -15,9 +15,15 @@ namespace BarberShopBookingSystem.Controllers
 
         // GET /api/profiles — CRM customer list with appointment stats (admin only)
         [HttpGet]
-        [Authorize(Roles = "admin")]
+        [Authorize]
         public async Task<IActionResult> GetProfiles()
         {
+            // Manual role check — Supabase JWTs don't carry app-level roles
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null) return Unauthorized();
+            var adminProfile = await _context.Profiles.FindAsync(Guid.Parse(userIdClaim));
+            if (adminProfile == null || adminProfile.Role != "admin") return Forbid();
+
             var profiles = await _context.Profiles
                 .Where(p => p.Role == "customer")
                 .ToListAsync();
@@ -67,9 +73,15 @@ namespace BarberShopBookingSystem.Controllers
 
         // POST /api/profiles (admin only)
         [HttpPost]
-        [Authorize(Roles = "admin")]
+        [Authorize]
         public async Task<IActionResult> AddProfile([FromBody] Profile profile)
         {
+            // Manual role check — Supabase JWTs don't carry app-level roles
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null) return Unauthorized();
+            var adminProfile = await _context.Profiles.FindAsync(Guid.Parse(userIdClaim));
+            if (adminProfile == null || adminProfile.Role != "admin") return Forbid();
+
             _context.Profiles.Add(profile);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetProfile), new { id = profile.Id }, profile);
@@ -77,9 +89,15 @@ namespace BarberShopBookingSystem.Controllers
 
         // PUT /api/profiles/{id} (admin only)
         [HttpPut("{id}")]
-        [Authorize(Roles = "admin")]
+        [Authorize]
         public async Task<IActionResult> UpdateProfile(Guid id, [FromBody] Profile profile)
         {
+            // Manual role check — Supabase JWTs don't carry app-level roles
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null) return Unauthorized();
+            var adminProfile = await _context.Profiles.FindAsync(Guid.Parse(userIdClaim));
+            if (adminProfile == null || adminProfile.Role != "admin") return Forbid();
+
             var existing = await _context.Profiles.FindAsync(id);
             if (existing == null) return NotFound();
             existing.FullName = profile.FullName;
@@ -90,9 +108,15 @@ namespace BarberShopBookingSystem.Controllers
 
         // PATCH /api/profiles — update customer notes/preferences (no-op, fields not in current schema)
         [HttpPatch]
-        [Authorize(Roles = "admin")]
-        public IActionResult UpdateCustomer([FromBody] object dto)
+        [Authorize]
+        public async Task<IActionResult> UpdateCustomer([FromBody] object dto)
         {
+            // Manual role check — Supabase JWTs don't carry app-level roles
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null) return Unauthorized();
+            var adminProfile = await _context.Profiles.FindAsync(Guid.Parse(userIdClaim));
+            if (adminProfile == null || adminProfile.Role != "admin") return Forbid();
+
             return Ok();
         }
     }

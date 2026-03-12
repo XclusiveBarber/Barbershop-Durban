@@ -35,7 +35,8 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
 
   useEffect(() => {
     fetchAppointments();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
 
   const fetchAppointments = async () => {
     try {

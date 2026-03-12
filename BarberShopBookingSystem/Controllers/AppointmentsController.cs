@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text.Json.Serialization; // <-- ADDED THIS FOR JSON BINDING
 
 namespace BarberShopBookingSystem.Controllers
 {
@@ -16,7 +17,7 @@ namespace BarberShopBookingSystem.Controllers
         private readonly ApplicationDbContext _context;
         public AppointmentsController(ApplicationDbContext context) => _context = context;
 
-        // GET /api/appointments/my-appointments — customer's own appointments with barber/haircut details
+        // GET /api/appointments/my-appointments
         [HttpGet("my-appointments")]
         public async Task<IActionResult> GetMyAppointments()
         {
@@ -54,7 +55,7 @@ namespace BarberShopBookingSystem.Controllers
             return Ok(new { appointments = result });
         }
 
-        // GET /api/appointments/all — all appointments enriched (for admin/barber dashboards)
+        // GET /api/appointments/all 
         [HttpGet("all")]
         public async Task<IActionResult> GetAllAppointments([FromQuery] string? date)
         {
@@ -116,13 +117,22 @@ namespace BarberShopBookingSystem.Controllers
 
             var appointmentDateUtc = dto.AppointmentDate;
 
-            // POLICY: 30-Minute Minimum Notice
-            if (DateTime.TryParse($"{dto.AppointmentDate.ToString("yyyy-MM-dd")} {dto.TimeSlot}", out DateTime requestedTime))
+            // --- UPDATED POLICY: 30-Minute Minimum Notice with Year 1 Trap ---
+            if (DateTime.TryParse($"{dto.AppointmentDate:yyyy-MM-dd} {dto.TimeSlot}", out DateTime requestedTime))
             {
+                // FAILSAFE: If the frontend sends bad data and C# defaults to Year 1
+                if (requestedTime.Year == 1)
+                    return BadRequest(new { error = "System error: The date was missing or incorrectly formatted." });
+
                 var localTimeNow = DateTime.UtcNow.AddHours(2); // SAST timezone
                 if (requestedTime < localTimeNow.AddMinutes(30))
                     return BadRequest(new { error = "Appointments must be booked at least 30 minutes in advance." });
             }
+            else
+            {
+                return BadRequest(new { error = "Could not read the appointment time format." });
+            }
+            // -----------------------------------------------------------------
 
             var haircut = await _context.Haircuts.FindAsync(dto.HaircutId);
             if (haircut == null) return NotFound(new { error = "Haircut not found" });
@@ -173,7 +183,7 @@ namespace BarberShopBookingSystem.Controllers
             return CreatedAtAction(nameof(GetMyAppointments), new { }, appointment);
         }
 
-        // DELETE /api/appointments/{id} — customer cancels their own appointment
+        // DELETE /api/appointments/{id} 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAppointment(Guid id)
         {
@@ -191,7 +201,7 @@ namespace BarberShopBookingSystem.Controllers
             return Ok(new { message = "Appointment cancelled." });
         }
 
-        // PATCH /api/appointments/{id} — update appointment status (admin/barber)
+        // PATCH /api/appointments/{id} 
         [HttpPatch("{id}")]
         public async Task<IActionResult> UpdateAppointmentStatus(Guid id, [FromBody] UpdateStatusDto dto)
         {
@@ -245,7 +255,7 @@ namespace BarberShopBookingSystem.Controllers
             return Ok(appointment);
         }
 
-        // PUT /api/appointments/{id}/late-arrival — admin only
+        // PUT /api/appointments/{id}/late-arrival 
         [HttpPut("{id}/late-arrival")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> HandleLateArrival(Guid id, [FromBody] int minutesLate)
@@ -260,7 +270,7 @@ namespace BarberShopBookingSystem.Controllers
             return Ok(appointment);
         }
 
-        // PUT /api/appointments/{id}/cancel — admin cancel with email notification
+        // PUT /api/appointments/{id}/cancel 
         [HttpPut("{id}/cancel")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> CancelAppointment(Guid id, [FromServices] IEmailService emailService)
@@ -277,6 +287,25 @@ namespace BarberShopBookingSystem.Controllers
 
             return Ok("Appointment cancelled and notification sent.");
         }
+    }
+
+    // --- ADDED THE BULLETPROOF DTO HERE ---
+    public class AppointmentCreateDto
+    {
+        [JsonPropertyName("haircutId")]
+        public Guid HaircutId { get; set; }
+
+        [JsonPropertyName("appointmentDate")]
+        public DateOnly AppointmentDate { get; set; }
+
+        [JsonPropertyName("timeSlot")]
+        public string TimeSlot { get; set; } = string.Empty;
+
+        [JsonPropertyName("discountAmount")]
+        public decimal DiscountAmount { get; set; }
+
+        [JsonPropertyName("discountCode")]
+        public string? DiscountCode { get; set; }
     }
 
     public class RescheduleDto

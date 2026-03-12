@@ -268,7 +268,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
       const data = await checkoutRes.json();
       console.log("Data returned from Azure:", data); // Helps us debug if it fails again!
       // Step 3: Extract URL safely (catches capitalization differences from C#)
-      const finalRedirectUrl = data.redirectUrl || data.RedirectUrl || data.redirecturl || data.url;
+      const finalRedirectUrl = data.redirectUrl || data.RedirectUrl || data.redirecturl || data.redirect_url || data.url;
       if (!finalRedirectUrl) {
          throw new Error("Azure returned success, but the Yoco URL was missing. Check the console log!");
       }

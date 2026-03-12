@@ -27,14 +27,17 @@ namespace BarberShopBookingSystem.Controllers
             var secretKey = _config["Yoco:SecretKey"];
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", secretKey);
 
+            var frontendUrl = _config["FRONTEND_URL"] ?? "http://localhost:3000";
+            // Use first URL if comma-separated list
+            var baseUrl = frontendUrl.Split(',')[0].Trim().TrimEnd('/');
+
             // Yoco expects amounts in cents (e.g., R100.00 = 10000)
             var payload = new
             {
                 amount = (int)(request.Amount * 100),
                 currency = "ZAR",
-                // Attach the AppointmentId to the URL so the frontend can grab it on success
-                successUrl = $"http://localhost:5173/payment-success?appointmentId={request.AppointmentId}",
-                cancelUrl = $"http://localhost:5173/payment-cancelled?appointmentId={request.AppointmentId}"
+                successUrl = $"{baseUrl}/payment-success?appointmentId={request.AppointmentId}",
+                cancelUrl = $"{baseUrl}/payment-cancelled?appointmentId={request.AppointmentId}"
             };
 
             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
@@ -46,9 +49,13 @@ namespace BarberShopBookingSystem.Controllers
             }
 
             var jsonResponse = await response.Content.ReadAsStringAsync();
+            var yocoData = JsonSerializer.Deserialize<JsonElement>(jsonResponse);
 
-            // This returns the Yoco redirect URL to the frontend
-            return Ok(jsonResponse);
+            return Ok(new
+            {
+                redirectUrl = yocoData.GetProperty("redirectUrl").GetString(),
+                checkoutId = yocoData.GetProperty("id").GetString(),
+            });
         }
 
         [HttpPost("confirm")]

@@ -41,6 +41,10 @@ const nextConfig = {
         source: '/api/customers/:path*',
         destination: `${backendUrl}/api/profiles/:path*`,
       },
+      {
+        source: '/api/payments/:path*',
+        destination: `${backendUrl}/api/payments/:path*`,
+      },
     ];
   },
 }

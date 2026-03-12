@@ -207,16 +207,21 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
 
   // ── Submission ────────────────────────────────────────────────────────────
 
+  const [isRedirectingToPayment, setIsRedirectingToPayment] = useState(false);
+
   const handleConfirm = async () => {
     if (!isLoggedIn || !user) {
       toast.error("You must be logged in to confirm your booking.");
       return;
     }
 
+    setIsRedirectingToPayment(true);
+
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
 
+      // Step 1: Create the appointment
       const response = await fetch("/api/appointments", {
         method: "POST",
         headers,
@@ -243,11 +248,33 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         throw new Error(errorMessage);
       }
 
-      toast.success("Booking confirmed! We'll be in touch shortly.");
-      goNext();
+      const appointment = await response.json();
+      const appointmentId = appointment.id;
+
+      // Step 2: Create Yoco checkout session
+      const checkoutRes = await fetch("/api/payments/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: selectedService!.price,
+          appointmentId,
+        }),
+      });
+
+      if (!checkoutRes.ok) {
+        const errText = await checkoutRes.text();
+        throw new Error(`Payment setup failed: ${errText}`);
+      }
+
+      const { redirectUrl } = await checkoutRes.json();
+
+      // Step 3: Redirect to Yoco hosted payment page
+      toast.success("Redirecting to payment...");
+      window.location.href = redirectUrl;
     } catch (error: any) {
       console.error("Booking error:", error);
       toast.error(error.message || "Failed to create appointment");
+      setIsRedirectingToPayment(false);
     }
   };
 
@@ -423,9 +450,10 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                       </div>
                       <button
                         onClick={handleConfirm}
-                        className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide hover:opacity-90 transition-all"
+                        disabled={isRedirectingToPayment}
+                        className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        Confirm Appointment
+                        {isRedirectingToPayment ? "Redirecting to payment..." : "Confirm & Pay"}
                       </button>
                     </>
                   ) : (

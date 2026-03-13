@@ -65,8 +65,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(TOKEN_KEY);
     }
 
-    // Mark loading done immediately — localStorage is the source of truth for UI
-    setIsLoading(false);
+    // If we already restored a user from localStorage, mark loading done
+    // immediately so pages don't flash. Otherwise keep isLoading=true until
+    // the Supabase session check below completes — this prevents the dashboard
+    // from redirecting to /login on the very first render after a Google OAuth
+    // redirect (when cookies hold a valid session but localStorage is empty).
+    if (restoredFromStorage) {
+      setIsLoading(false);
+    }
 
     // ── Step 2: verify / refresh Supabase session in background ────────────
     // This refreshes the access token and syncs the latest profile data.
@@ -111,6 +117,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // API call which is the right time to prompt re-login.
       } catch {
         // Network error — keep whatever state we already have
+      } finally {
+        // If we didn't restore from localStorage, we deferred isLoading=false
+        // until now so that protected pages (e.g. /dashboard) wait for the
+        // session check before deciding to redirect.
+        if (!restoredFromStorage) {
+          setIsLoading(false);
+        }
       }
     })();
 

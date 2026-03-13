@@ -88,19 +88,22 @@ function StepHeader({
 }
 
 function BookingSummaryCard({
-  service,
+  services,
   date,
   time,
 }: {
-  service: Service;
+  services: Service[];
   date: Date | undefined;
   time: string | null;
 }) {
+  const totalDuration = services.reduce((acc, s) => acc + (s.duration_minutes || 0), 0);
+  const totalPrice = services.reduce((acc, s) => acc + Number(s.price), 0);
+
   // Compute estimated end time
   const endTime = (() => {
-    if (!time || !service.duration_minutes) return null;
+    if (!time || !totalDuration) return null;
     const [h, m] = time.split(":").map(Number);
-    const totalMins = h * 60 + m + service.duration_minutes;
+    const totalMins = h * 60 + m + totalDuration;
     const eh = Math.floor(totalMins / 60) % 24;
     const em = totalMins % 60;
     return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
@@ -111,12 +114,14 @@ function BookingSummaryCard({
       <p className="text-[10px] uppercase tracking-widest text-black/30 font-medium mb-3">
         Booking Summary
       </p>
-      <div className="flex justify-between text-sm">
-        <span className="text-black/50 flex items-center gap-2">
-          <Scissors className="w-3.5 h-3.5" /> Service
-        </span>
-        <span className="font-medium text-black">{service.name}</span>
-      </div>
+      {services.map(service => (
+        <div key={service.id} className="flex justify-between text-sm">
+          <span className="text-black/50 flex items-center gap-2">
+            <Scissors className="w-3.5 h-3.5" /> Service
+          </span>
+          <span className="font-medium text-black">{service.name}</span>
+        </div>
+      ))}
       <div className="flex justify-between text-sm">
         <span className="text-black/50 flex items-center gap-2">
           <CalendarIcon className="w-3.5 h-3.5" /> Date
@@ -134,16 +139,16 @@ function BookingSummaryCard({
           {endTime && (
             <span className="text-black/40 font-normal"> – {endTime}</span>
           )}
-          {service.duration_minutes && (
+          {totalDuration > 0 && (
             <span className="text-black/30 font-normal text-xs ml-1">
-              ({service.duration_minutes} min)
+              ({totalDuration} min)
             </span>
           )}
         </span>
       </div>
       <div className="pt-3 border-t border-black/10 flex justify-between">
         <span className="font-semibold text-sm text-black">Total</span>
-        <span className="font-semibold text-sm text-black">{service.price}</span>
+        <span className="font-semibold text-sm text-black">R{totalPrice}</span>
       </div>
     </div>
   );
@@ -162,10 +167,11 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
 
   // Wizard state
   const [step, setStep]               = useState(1);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedBarber, setSelectedBarber]   = useState<Barber | null>(null);
   const [selectedDate, setSelectedDate]       = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime]       = useState<string | null>(null);
+  const [phoneState, setPhoneState]           = useState<string>("");
 
   const goNext = () => setStep((s) => s + 1);
   const goPrev = () => setStep((s) => s - 1);
@@ -257,9 +263,10 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         method: "POST",
         headers,
         body: JSON.stringify({
-          haircutId: selectedService!.id,
+          haircutIds: selectedServices.map(s => s.id),
           appointmentDate: selectedDate ? format(selectedDate, "yyyy-MM-dd") : "",
           timeSlot: selectedTime,
+          customerPhone: phoneState,
         }),
       });
 
@@ -288,7 +295,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: selectedService!.price,
+          amount: selectedServices.reduce((acc, s) => acc + Number(s.price), 0),
           appointmentId,
         }),
       });
@@ -387,33 +394,53 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   ) : services.length === 0 ? (
                     <div className="text-center py-12 text-black/50">No services available</div>
                   ) : (
-                    <div className="grid gap-3">
-                      {services.map((service) => (
-                        <button
-                          key={service.id}
-                          onClick={() => { setSelectedService(service); goNext(); }}
-                          className={`flex items-center justify-between p-5 border-2 text-left transition-all hover:border-black group ${
-                            selectedService?.id === service.id
-                              ? "border-black bg-black/[0.02]"
-                              : "border-black/10"
-                          }`}
-                        >
-                          <div>
-                            <p className="font-medium text-base text-black">{service.name}</p>
-                            <p className="text-xs text-black/40 mt-0.5">{service.description || "Haircut service"}</p>
-                            {service.duration_minutes && (
-                              <p className="text-xs text-black/30 mt-0.5 flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> {service.duration_minutes} min
-                              </p>
-                            )}
-                          </div>
-                          <div className="text-right flex items-center gap-3">
-                            <p className="font-semibold text-base text-black">R{service.price}</p>
-                            <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-black" />
-                          </div>
-                        </button>
-                      ))}
-                    </div>
+                    <>
+                      <div className="grid gap-3">
+                        {services.map((service) => {
+                          const isSelected = selectedServices.some(s => s.id === service.id);
+                          return (
+                            <button
+                              key={service.id}
+                              onClick={() => {
+                                setSelectedServices(prev => 
+                                  isSelected 
+                                    ? prev.filter(s => s.id !== service.id) 
+                                    : [...prev, service]
+                                );
+                              }}
+                              className={`flex items-center justify-between p-5 border-2 text-left transition-all hover:border-black group ${
+                                isSelected
+                                  ? "border-black bg-black/[0.02]"
+                                  : "border-black/10"
+                              }`}
+                            >
+                              <div>
+                                <p className="font-medium text-base text-black">{service.name}</p>
+                                <p className="text-xs text-black/40 mt-0.5">{service.description || "Haircut service"}</p>
+                                {service.duration_minutes && (
+                                  <p className="text-xs text-black/30 mt-0.5 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" /> {service.duration_minutes} min
+                                  </p>
+                                )}
+                              </div>
+                              <div className="text-right flex items-center gap-3">
+                                <p className="font-semibold text-base text-black">R{service.price}</p>
+                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-black border-black text-white' : 'border-black/20 text-transparent group-hover:border-black/50'}`}>
+                                  <CheckCircle className={`w-3.5 h-3.5 ${isSelected ? 'opacity-100' : 'opacity-0'}`} />
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <button
+                        disabled={selectedServices.length === 0}
+                        onClick={goNext}
+                        className="w-full bg-accent text-accent-foreground py-4 mt-8 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:opacity-90 font-medium text-sm uppercase tracking-wide"
+                      >
+                        Continue
+                      </button>
+                    </>
                   )}
                 </motion.div>
               )}
@@ -489,7 +516,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   {isLoggedIn && user ? (
                     <>
                       <StepHeader onBack={goPrev} title="Confirm Booking" />
-                      <BookingSummaryCard service={selectedService!} date={selectedDate} time={selectedTime} />
+                      <BookingSummaryCard services={selectedServices} date={selectedDate} time={selectedTime} />
                       <div className="flex items-center gap-3 p-4 border-2 border-black/10 bg-black/[0.02]">
                         <UserCheck className="w-5 h-5 text-black/40 flex-shrink-0" />
                         <div>
@@ -514,6 +541,20 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                             </li>
                           ))}
                         </ul>
+                      </div>
+
+                      {/* ── Phone Number ──────────────────────────────── */}
+                      <div className="border-2 border-black/10 p-5">
+                        <label className="text-[10px] uppercase tracking-widest text-black/40 font-medium block mb-3">
+                          Phone Number (For Updates)
+                        </label>
+                        <input
+                          type="tel"
+                          value={phoneState}
+                          onChange={(e) => setPhoneState(e.target.value)}
+                          placeholder="e.g. 082 123 4567"
+                          className="w-full border-2 border-black/10 px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors"
+                        />
                       </div>
 
                       {/* ── External Payment Notice ────────────────────── */}
@@ -574,7 +615,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   </h3>
 
                   <p className="text-black/55 max-w-sm mx-auto text-sm leading-relaxed">
-                    {`Thanks, ${user?.name ?? ""}. Your ${selectedService?.name} on ${
+                    {`Thanks, ${user?.name ?? ""}. Your ${selectedServices.map(s => s.name).join(" and ")} on ${
                       selectedDate ? format(selectedDate, "EEE, MMM d") : ""
                     } at ${selectedTime} is confirmed. A barber will be assigned to you.`}
                   </p>
@@ -589,8 +630,9 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                     <button
                       onClick={() => {
                         setStep(1);
-                        setSelectedService(null);
+                        setSelectedServices([]);
                         setSelectedTime(null);
+                        setPhoneState("");
                       }}
                       className="border-2 border-black/10 text-black/50 px-8 py-3 text-sm uppercase tracking-wider font-semibold hover:border-black/30 hover:text-black transition-all font-montserrat"
                     >
@@ -625,7 +667,9 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
             <p className="text-sm text-black/60 leading-relaxed mb-6">
               You will be redirected to <strong className="text-black">Yoco</strong>, a secure
               third-party payment provider, to complete your payment of{" "}
-              <strong className="text-black">R{selectedService?.price}</strong>. After a
+              <strong className="text-black">
+                R{selectedServices.reduce((acc, s) => acc + Number(s.price), 0)}
+              </strong>. After a
               successful payment you will be brought back here automatically.
             </p>
             <p className="text-xs text-black/40 mb-8">

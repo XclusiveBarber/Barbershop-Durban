@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, X, Edit2, LogOut, Plus, Home, User, Save, Settings } from 'lucide-react';
 import { format } from 'date-fns';
+import { DayPicker } from 'react-day-picker';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useAuth, type AuthUser } from '@/context/auth-context';
@@ -34,6 +35,67 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
   // Profile edit state
   const [editName, setEditName] = useState(user.name || '');
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // Reschedule state
+  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [rescheduleTargetId, setRescheduleTargetId] = useState<number | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
+  const [rescheduleTime, setRescheduleTime] = useState<string | null>(null);
+  const [availableRescheduleSlots, setAvailableRescheduleSlots] = useState<string[]>([]);
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
+  useEffect(() => {
+    if (!rescheduleDate) {
+      setAvailableRescheduleSlots([]);
+      return;
+    }
+    const fetchSlots = async () => {
+      try {
+        const dateStr = format(rescheduleDate, "yyyy-MM-dd");
+        const res = await fetch(`/api/availability?date=${dateStr}`);
+        const data = await res.json();
+        setAvailableRescheduleSlots(data.available_slots || [
+          "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
+          "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
+          "17:00", "17:30"
+        ]);
+      } catch (error) {
+        setAvailableRescheduleSlots([]);
+      }
+    };
+    fetchSlots();
+  }, [rescheduleDate]);
+
+  const handleReschedule = async () => {
+    if (!rescheduleTargetId || !rescheduleDate || !rescheduleTime) return;
+    setIsRescheduling(true);
+    try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/appointments/${rescheduleTargetId}/reschedule`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...((accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}))
+            },
+            body: JSON.stringify({ 
+                newDate: format(rescheduleDate, "yyyy-MM-dd"), 
+                newTime: rescheduleTime
+            })
+        });
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(errorText || "Failed to reschedule");
+        }
+        
+        toast.success("Appointment successfully rescheduled!");
+        setIsRescheduleModalOpen(false);
+        fetchAppointments();
+        
+    } catch (error: any) {
+        toast.error(error.message);
+    } finally {
+        setIsRescheduling(false);
+    }
+  };
 
   useEffect(() => {
     fetchAppointments();
@@ -105,6 +167,20 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
 
   return (
     <div className="min-h-screen bg-white text-black">
+      <style>{`
+        .rdp {
+          --rdp-cell-size: 40px;
+          --rdp-accent-color: #000000;
+          --rdp-background-color: #f3f3f3;
+          margin: 0;
+        }
+        .rdp-day_selected,
+        .rdp-day_selected:focus-visible,
+        .rdp-day_selected:hover {
+          background-color: var(--rdp-accent-color) !important;
+          color: white !important;
+        }
+      `}</style>
 
       {/* Header */}
       <header className="bg-black py-4">
@@ -243,7 +319,12 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
 
                           <div className="flex gap-3 pt-6 border-t border-black/5">
                             <button
-                              onClick={() => router.push('/services')}
+                              onClick={() => {
+                                setRescheduleTargetId(appt.id);
+                                setRescheduleDate(new Date(appt.appointment_date));
+                                setRescheduleTime(appt.time_slot);
+                                setIsRescheduleModalOpen(true);
+                              }}
                               className="flex-1 border-2 border-black/10 text-black/60 px-4 py-2 text-xs uppercase tracking-widest hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-2"
                             >
                               <Edit2 className="w-3 h-3" /> Reschedule
@@ -374,6 +455,73 @@ export function CustomerDashboard({ user }: { user: AuthUser }) {
           </div>
         )}
       </div>
+
+      {/* ── Reschedule Modal ────────────────────────────────── */}
+      {isRescheduleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-white max-w-2xl w-full p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-light text-black">Reschedule Appointment</h3>
+              <button onClick={() => setIsRescheduleModalOpen(false)} className="text-black/50 hover:text-black border-2 border-transparent hover:border-black/10 p-2 rounded transition-all">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-10">
+              <div className="flex justify-center border border-black/10 p-4">
+                <DayPicker
+                  mode="single"
+                  selected={rescheduleDate}
+                  onSelect={setRescheduleDate}
+                  disabled={{ before: new Date() }}
+                  className="p-0 m-0"
+                />
+              </div>
+              <div className="space-y-4">
+                <p className="text-xs font-medium uppercase tracking-widest text-black/40 flex items-center gap-2">
+                  <Clock className="w-4 h-4" /> Available Times
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {availableRescheduleSlots.length === 0 ? (
+                    <p className="col-span-2 text-xs text-black/40 py-4">Loading available times...</p>
+                  ) : (
+                    availableRescheduleSlots.map((time) => (
+                      <button
+                        key={time}
+                        onClick={() => setRescheduleTime(time)}
+                        className={`p-3 text-sm border-2 transition-all ${
+                          rescheduleTime === time
+                            ? "bg-black text-white border-black"
+                            : "border-black/10 hover:border-black text-black"
+                        }`}
+                      >
+                        {time}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex gap-3">
+              <button
+                disabled={!rescheduleDate || !rescheduleTime || isRescheduling}
+                onClick={handleReschedule}
+                className="flex-1 bg-accent text-accent-foreground py-4 text-sm uppercase tracking-widest font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                {isRescheduling ? "Saving..." : "Save New Time"}
+              </button>
+              <button
+                onClick={() => setIsRescheduleModalOpen(false)}
+                className="flex-1 border-2 border-black/10 text-black/50 py-4 text-sm uppercase tracking-widest font-semibold hover:border-black/30 hover:text-black transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

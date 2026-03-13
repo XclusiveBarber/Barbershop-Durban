@@ -150,13 +150,13 @@ export function Footer() {
 
         <div className="pt-8 border-t border-white/20 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-white/70 font-poppins">
           <p>
-            © 2025 Xclusive Barber - Durban, South Africa. All Rights Reserved.
+            © 2026 Xclusive Barber - Durban, South Africa. All Rights Reserved.
           </p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-white transition-colors">
+            <a href="/privacy-policy" className="hover:text-white transition-colors">
               Privacy Policy
             </a>
-            <a href="#" className="hover:text-white transition-colors">
+            <a href="/terms-of-service" className="hover:text-white transition-colors">
               Terms of Service
             </a>
           </div>

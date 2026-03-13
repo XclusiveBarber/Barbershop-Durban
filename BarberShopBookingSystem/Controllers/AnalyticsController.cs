@@ -20,7 +20,6 @@ namespace BarberShopBookingSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAnalytics([FromQuery] string period = "week")
         {
-            // Manual role check — Supabase JWTs don't carry app-level roles
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (userIdClaim == null) return Unauthorized();
             var userId = Guid.Parse(userIdClaim);
@@ -29,7 +28,6 @@ namespace BarberShopBookingSystem.Controllers
                 return Forbid();
             var now = DateTime.UtcNow.AddHours(2); // SAST
 
-            // This calculates as a DateTime
             var startDate = period switch
             {
                 "day" => now.Date,
@@ -39,10 +37,8 @@ namespace BarberShopBookingSystem.Controllers
                 _ => now.AddDays(-7).Date,
             };
 
-            // THE FIX: Convert the DateTime to DateOnly before asking the database
             var targetDate = DateOnly.FromDateTime(startDate);
 
-            // Now the database query will compare DateOnly to DateOnly perfectly
             var appointments = await _context.Appointments
                 .Where(a => a.AppointmentDate >= targetDate)
                 .ToListAsync();
@@ -54,20 +50,29 @@ namespace BarberShopBookingSystem.Controllers
                 ? Math.Round((double)cancelled.Count / appointments.Count * 100, 1)
                 : 0.0;
 
-            // Popular services
-            var haircutIds = appointments.Select(a => a.HaircutId).Distinct().ToList();
+            // --- THE MULTI-SERVICE ANALYTICS FIX ---
+            var appointmentIds = appointments.Select(a => a.Id).ToList();
+
+            // Pull from the bridge table instead of the main table
+            var apptServices = await _context.AppointmentServices
+                .Where(aps => appointmentIds.Contains(aps.AppointmentId))
+                .ToListAsync();
+
+            var haircutIds = apptServices.Select(aps => aps.HaircutId).Distinct().ToList();
             var haircuts = await _context.Haircuts.Where(h => haircutIds.Contains(h.Id)).ToListAsync();
             var haircutMap = haircuts.ToDictionary(h => h.Id, h => h.Name);
 
-            var popularServices = appointments
-                .GroupBy(a => a.HaircutId)
+            // Group by the services in the cart to see what is most popular
+            var popularServices = apptServices
+                .GroupBy(aps => aps.HaircutId)
                 .Select(g => new
                 {
                     ServiceName = haircutMap.TryGetValue(g.Key, out var name) ? name : "Unknown",
-                    Bookings = g.Count(),
+                    Bookings = g.Count(), // Count how many times this specific service was booked
                 })
                 .OrderByDescending(s => s.Bookings)
                 .ToList();
+            // ---------------------------------------
 
             // Barber performance
             var barberIds = appointments.Where(a => a.BarberId.HasValue).Select(a => a.BarberId.Value).Distinct().ToList();

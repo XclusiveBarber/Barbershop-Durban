@@ -9,7 +9,7 @@ namespace BarberShopBookingSystem.Data
             : base(options)
         {
         }
-
+        public DbSet<AppointmentService> AppointmentServices { get; set; }
         public DbSet<Barber> Barbers { get; set; }
         public DbSet<Haircut> Haircuts { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
@@ -17,6 +17,9 @@ namespace BarberShopBookingSystem.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // ADD THIS BLOCK:
+            modelBuilder.Entity<AppointmentService>()
+                .HasKey(aps => new { aps.AppointmentId, aps.HaircutId });
             // Mapping to lowercase Supabase table names
             modelBuilder.Entity<Barber>().ToTable("barbers");
             modelBuilder.Entity<Haircut>().ToTable("haircuts");
@@ -27,6 +30,7 @@ namespace BarberShopBookingSystem.Data
             modelBuilder.Entity<Haircut>()
                 .Property(h => h.Price)
                 .HasPrecision(18, 2);
+
 
  
         }

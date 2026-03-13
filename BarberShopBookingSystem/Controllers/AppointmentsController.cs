@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using System.Text.Json.Serialization; // <-- ESSENTIAL FOR JSON BINDING
+using System.Text.Json.Serialization;
 
 namespace BarberShopBookingSystem.Controllers
 {
@@ -30,26 +30,39 @@ namespace BarberShopBookingSystem.Controllers
                 .OrderByDescending(a => a.AppointmentDate)
                 .ToListAsync();
 
-            var haircutIds = appointments.Select(a => a.HaircutId).Distinct().ToList();
+            var apptIds = appointments.Select(a => a.Id).ToList();
             var barberIds = appointments.Where(a => a.BarberId.HasValue).Select(a => a.BarberId.Value).Distinct().ToList();
 
+            // Pull the multi-services from the new junction table
+            var apptServices = await _context.AppointmentServices
+                .Where(aps => apptIds.Contains(aps.AppointmentId))
+                .ToListAsync();
+
+            var haircutIds = apptServices.Select(aps => aps.HaircutId).Distinct().ToList();
             var haircuts = await _context.Haircuts.Where(h => haircutIds.Contains(h.Id)).ToListAsync();
             var barbers = await _context.Barbers.Where(b => barberIds.Contains(b.Id)).ToListAsync();
 
             var haircutMap = haircuts.ToDictionary(h => h.Id);
             var barberMap = barbers.ToDictionary(b => b.Id);
 
-            var result = appointments.Select(a => new
+            var result = appointments.Select(a =>
             {
-                a.Id,
-                a.AppointmentDate,
-                a.TimeSlot,
-                a.Status,
-                a.TotalPrice,
-                a.PaymentStatus,
-                a.CreatedAt,
-                Haircuts = haircutMap.TryGetValue(a.HaircutId, out var hc) ? new { hc.Name, hc.Price } : null,
-                Barbers = a.BarberId.HasValue && barberMap.TryGetValue(a.BarberId.Value, out var b) ? new { b.FullName } : null,
+                // Grab all services for this specific appointment
+                var serviceIdsForThisAppt = apptServices.Where(aps => aps.AppointmentId == a.Id).Select(aps => aps.HaircutId);
+                var servicesList = serviceIdsForThisAppt.Select(id => haircutMap.TryGetValue(id, out var h) ? h.Name : "Unknown").ToList();
+
+                return new
+                {
+                    a.Id,
+                    a.AppointmentDate,
+                    a.TimeSlot,
+                    a.Status,
+                    a.TotalPrice,
+                    a.PaymentStatus,
+                    a.CreatedAt,
+                    Services = string.Join(", ", servicesList), // e.g. "Haircut, Beard Trim"
+                    Barbers = a.BarberId.HasValue && barberMap.TryGetValue(a.BarberId.Value, out var b) ? new { b.FullName } : null,
+                };
             });
 
             return Ok(new { appointments = result });
@@ -59,11 +72,9 @@ namespace BarberShopBookingSystem.Controllers
         [HttpGet("all")]
         public async Task<IActionResult> GetAllAppointments([FromQuery] string? date)
         {
-            // --- 1. THE LAZY CLEANUP (AUTO-CANCEL 30-MIN LATE BOOKINGS) ---
             var localTimeNow = DateTime.UtcNow.AddHours(2); // SAST
             var today = DateOnly.FromDateTime(localTimeNow);
 
-            // Find all pending appointments from today or earlier
             var staleCheck = await _context.Appointments
                 .Where(a => a.Status == "pending" && a.AppointmentDate <= today)
                 .ToListAsync();
@@ -73,7 +84,6 @@ namespace BarberShopBookingSystem.Controllers
             {
                 if (DateTime.TryParse($"{appt.AppointmentDate:yyyy-MM-dd} {appt.TimeSlot}", out DateTime apptTime))
                 {
-                    // If it is more than 30 minutes past the scheduled time, mark as no-show
                     if (apptTime.AddMinutes(30) < localTimeNow)
                     {
                         appt.Status = "no-show";
@@ -82,7 +92,6 @@ namespace BarberShopBookingSystem.Controllers
                 }
             }
             if (needsSave) await _context.SaveChangesAsync();
-            // --------------------------------------------------------------
 
             var query = _context.Appointments.AsQueryable();
 
@@ -96,9 +105,12 @@ namespace BarberShopBookingSystem.Controllers
                 .ThenBy(a => a.TimeSlot)
                 .ToListAsync();
 
-            var haircutIds = appointments.Select(a => a.HaircutId).Distinct().ToList();
+            var apptIds = appointments.Select(a => a.Id).ToList();
             var barberIds = appointments.Where(a => a.BarberId.HasValue).Select(a => a.BarberId.Value).Distinct().ToList();
             var userIds = appointments.Select(a => a.UserId).Distinct().ToList();
+
+            var apptServices = await _context.AppointmentServices.Where(aps => apptIds.Contains(aps.AppointmentId)).ToListAsync();
+            var haircutIds = apptServices.Select(aps => aps.HaircutId).Distinct().ToList();
 
             var haircuts = await _context.Haircuts.Where(h => haircutIds.Contains(h.Id)).ToListAsync();
             var barbers = await _context.Barbers.Where(b => barberIds.Contains(b.Id)).ToListAsync();
@@ -110,14 +122,16 @@ namespace BarberShopBookingSystem.Controllers
 
             var result = appointments.Select(a =>
             {
-                var haircut = haircutMap.TryGetValue(a.HaircutId, out var hc) ? hc : null;
                 var barber = a.BarberId.HasValue && barberMap.TryGetValue(a.BarberId.Value, out var br) ? br : null;
                 var profile = profileMap.TryGetValue(a.UserId, out var pr) ? pr : null;
+
+                var serviceIdsForThisAppt = apptServices.Where(aps => aps.AppointmentId == a.Id).Select(aps => aps.HaircutId);
+                var servicesList = serviceIdsForThisAppt.Select(id => haircutMap.TryGetValue(id, out var h) ? h.Name : "Unknown").ToList();
 
                 return new
                 {
                     a.Id,
-                    ServiceName = haircut?.Name ?? "Unknown",
+                    ServiceName = servicesList.Any() ? string.Join(", ", servicesList) : "Unknown",
                     ServicePrice = $"R{a.TotalPrice:F0}",
                     AppointmentDate = a.AppointmentDate.ToString("yyyy-MM-dd"),
                     AppointmentTime = a.TimeSlot,
@@ -125,14 +139,14 @@ namespace BarberShopBookingSystem.Controllers
                     BarberName = barber?.FullName ?? "Unassigned",
                     CustomerName = profile?.FullName ?? "Unknown",
                     CustomerEmail = profile?.Email,
-                    CustomerPhone = "",
+                    CustomerPhone = a.CustomerPhone ?? "",
                 };
             });
 
             return Ok(new { appointments = result });
         }
 
-        // POST /api/appointments — create a new appointment
+        // POST /api/appointments
         [HttpPost]
         public async Task<IActionResult> CreateAppointment([FromBody] AppointmentCreateDto dto)
         {
@@ -142,15 +156,13 @@ namespace BarberShopBookingSystem.Controllers
 
             var appointmentDateUtc = dto.AppointmentDate;
 
-            // --- THIS ALREADY PREVENTS BOOKING IN THE PAST ---
             if (DateTime.TryParse($"{dto.AppointmentDate:yyyy-MM-dd} {dto.TimeSlot}", out DateTime requestedTime))
             {
                 if (requestedTime.Year == 1)
                     return BadRequest(new { error = "System error: The date was missing or incorrectly formatted." });
 
-                var localTimeNow = DateTime.UtcNow.AddHours(2); // SAST timezone
+                var localTimeNow = DateTime.UtcNow.AddHours(2);
 
-                // If the requested time is less than 30 mins from right now, it rejects it.
                 if (requestedTime < localTimeNow.AddMinutes(30))
                     return BadRequest(new { error = "Appointments must be booked at least 30 minutes in advance." });
             }
@@ -158,10 +170,21 @@ namespace BarberShopBookingSystem.Controllers
             {
                 return BadRequest(new { error = "Could not read the appointment time format." });
             }
-            // -------------------------------------------------
 
-            var haircut = await _context.Haircuts.FindAsync(dto.HaircutId);
-            if (haircut == null) return NotFound(new { error = "Haircut not found" });
+            // --- THE NEW MULTI-SERVICE CART MATH ---
+            if (dto.HaircutIds == null || !dto.HaircutIds.Any())
+                return BadRequest(new { error = "You must select at least one service." });
+
+            var selectedHaircuts = await _context.Haircuts
+                .Where(h => dto.HaircutIds.Contains(h.Id))
+                .ToListAsync();
+
+            if (!selectedHaircuts.Any())
+                return NotFound(new { error = "Selected services could not be found." });
+
+            decimal finalPrice = selectedHaircuts.Sum(h => h.Price) - dto.DiscountAmount;
+            int totalDuration = selectedHaircuts.Sum(h => h.DurationMinutes);
+            // ---------------------------------------
 
             var allActiveBarbers = await _context.Barbers.Where(b => b.Available).ToListAsync();
             var targetDate = dto.AppointmentDate;
@@ -184,25 +207,34 @@ namespace BarberShopBookingSystem.Controllers
             if (assignedBarber == null)
                 return BadRequest(new { error = "No barbers are available for this time slot. Please choose another time." });
 
-            decimal finalPrice = haircut.Price;
-            if (dto.DiscountAmount > 0) finalPrice -= dto.DiscountAmount;
-
             var appointment = new Appointment
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 BarberId = assignedBarber.Id,
-                HaircutId = dto.HaircutId,
                 AppointmentDate = appointmentDateUtc,
                 TimeSlot = dto.TimeSlot,
                 Status = "pending",
                 PaymentStatus = "unpaid",
                 RescheduleCount = 0,
                 TotalPrice = finalPrice,
-                AppliedDiscountCode = dto.DiscountCode
+                TotalDurationMinutes = totalDuration, // Saved for future time-blocking math
+                AppliedDiscountCode = dto.DiscountCode,
+                CustomerPhone = dto.CustomerPhone
             };
 
             _context.Appointments.Add(appointment);
+
+            // SAVE THE SERVICES TO THE JUNCTION TABLE
+            foreach (var haircut in selectedHaircuts)
+            {
+                _context.AppointmentServices.Add(new AppointmentService
+                {
+                    AppointmentId = appointment.Id,
+                    HaircutId = haircut.Id
+                });
+            }
+
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetMyAppointments), new { }, appointment);
@@ -220,6 +252,17 @@ namespace BarberShopBookingSystem.Controllers
             if (appointment == null) return NotFound();
             if (appointment.UserId != userId) return Forbid();
 
+            if (DateTime.TryParse($"{appointment.AppointmentDate:yyyy-MM-dd} {appointment.TimeSlot}", out DateTime scheduledTime))
+            {
+                var localTimeNow = DateTime.UtcNow.AddHours(2);
+                var hoursUntilAppointment = (scheduledTime - localTimeNow).TotalHours;
+
+                if (hoursUntilAppointment > 0 && hoursUntilAppointment <= 2)
+                {
+                    return BadRequest(new { error = "Policy: Cancellations within 2 hours of the appointment are strictly prohibited. Please call the shop directly." });
+                }
+            }
+
             appointment.Status = "cancelled";
             await _context.SaveChangesAsync();
 
@@ -233,9 +276,8 @@ namespace BarberShopBookingSystem.Controllers
             var appointment = await _context.Appointments.FindAsync(id);
             if (appointment == null) return NotFound();
 
-            // --- 2. THE COMPLETE BUTTON FIX ---
             var validStatuses = new[] { "pending", "confirmed", "completed", "cancelled", "late", "no-show" };
-            var requestedStatus = dto.Status?.ToLower(); // Force lowercase
+            var requestedStatus = dto.Status?.ToLower();
 
             if (string.IsNullOrEmpty(requestedStatus) || !validStatuses.Contains(requestedStatus))
                 return BadRequest(new { error = $"Invalid status. Must be one of: {string.Join(", ", validStatuses)}" });
@@ -287,7 +329,6 @@ namespace BarberShopBookingSystem.Controllers
         [HttpPut("{id}/late-arrival")]
         public async Task<IActionResult> HandleLateArrival(Guid id, [FromBody] int minutesLate)
         {
-            // Manual role check — Supabase JWTs don't carry app-level roles
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userIdClaim == null) return Unauthorized();
             var adminProfile = await _context.Profiles.FindAsync(Guid.Parse(userIdClaim));
@@ -298,10 +339,8 @@ namespace BarberShopBookingSystem.Controllers
 
             if (minutesLate >= 30) return BadRequest("Policy: 30 minutes late requires rescheduling.");
 
-            // Flip the permanent flag so we never forget they were late
             appointment.IsLate = true;
 
-            // Apply your late fee logic
             if (minutesLate > 15) appointment.TotalPrice += 10;
 
             await _context.SaveChangesAsync();
@@ -333,8 +372,9 @@ namespace BarberShopBookingSystem.Controllers
 
     public class AppointmentCreateDto
     {
-        [JsonPropertyName("haircutId")]
-        public Guid HaircutId { get; set; }
+        // --- CHANGED THIS TO ACCEPT AN ARRAY OF IDs ---
+        [JsonPropertyName("haircutIds")]
+        public List<Guid> HaircutIds { get; set; } = new List<Guid>();
 
         [JsonPropertyName("appointmentDate")]
         public DateOnly AppointmentDate { get; set; }
@@ -347,6 +387,9 @@ namespace BarberShopBookingSystem.Controllers
 
         [JsonPropertyName("discountCode")]
         public string? DiscountCode { get; set; }
+
+        [JsonPropertyName("customerPhone")]
+        public string? CustomerPhone { get; set; }
     }
 
     public class RescheduleDto
@@ -355,7 +398,6 @@ namespace BarberShopBookingSystem.Controllers
         public string NewTime { get; set; } = string.Empty;
     }
 
-    // --- ADDED THE JSON MAGNET TO THE STATUS DTO ---
     public class UpdateStatusDto
     {
         [JsonPropertyName("status")]

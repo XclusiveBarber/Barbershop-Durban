@@ -7,5 +7,6 @@
         public string TimeSlot { get; set; } = string.Empty;
         public decimal DiscountAmount { get; set; }
         public string? DiscountCode { get; set; }
+        public string? CustomerPhone { get; set; }
     }
 }                 

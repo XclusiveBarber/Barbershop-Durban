@@ -646,9 +646,13 @@
       "AppointmentCreateDto": {
         "type": "object",
         "properties": {
-          "haircutId": {
-            "type": "string",
-            "format": "uuid"
+          "haircutIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
           },
           "appointmentDate": {
             "type": "string",
@@ -663,6 +667,10 @@
             "format": "double"
           },
           "discountCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerPhone": {
             "type": "string",
             "nullable": true
           }
@@ -697,7 +705,7 @@
       "ConfirmPaymentRequest": {
         "type": "object",
         "properties": {
-          "appointment_id": {
+          "appointmentId": {
             "type": "string",
             "format": "uuid"
           }
@@ -726,6 +734,10 @@
           "image_url": {
             "type": "string",
             "nullable": true
+          },
+          "duration_minutes": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -737,7 +749,7 @@
             "type": "number",
             "format": "double"
           },
-          "appointment_id": {
+          "appointmentId": {
             "type": "string",
             "format": "uuid"
           }

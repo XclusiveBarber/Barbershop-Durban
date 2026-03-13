@@ -5,13 +5,21 @@
         public Guid Id { get; set; }
         public Guid UserId { get; set; }
         public Guid? BarberId { get; set; }
-        public Guid HaircutId { get; set; }
+        
+
+        // DELETE THIS LINE:
+        // public Guid HaircutId { get; set; }
+
+        // ADD THIS LINE:
+        public int TotalDurationMinutes { get; set; } = 30;
         public DateOnly AppointmentDate { get; set; }
         public string TimeSlot { get; set; } = string.Empty;
         public string Status { get; set; } = "pending";
 
         // Add this right under public string Status { get; set; }
         public bool IsLate { get; set; } = false;
+
+        public string? CustomerPhone { get; set; }
 
         // New Payment Fields
         public string PaymentStatus { get; set; } = "unpaid";

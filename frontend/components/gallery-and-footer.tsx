@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Instagram,
-  Facebook,
-  Twitter,
   MapPin,
   Phone,
   Mail,
@@ -35,22 +33,26 @@ export function Footer() {
             </p>
             <div className="flex gap-3">
               <a
-                href="#"
+                href="https://www.instagram.com/_xclusive_barbershop_?igsh=MWlvYjEwdXp3OHZvaw%3D%3D&utm_source=qr"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 rounded-lg bg-black flex items-center justify-center hover:bg-white hover:text-black transition-all"
               >
                 <Instagram className="w-4 h-4" />
               </a>
               <a
-                href="#"
+                href="https://www.tiktok.com/@xclusive.barber?_r=1&_t=ZS-94b4uaG6IQT"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 rounded-lg bg-black flex items-center justify-center hover:bg-white hover:text-black transition-all"
               >
-                <Facebook className="w-4 h-4" />
-              </a>
-              <a
-                href="#"
-                className="w-10 h-10 rounded-lg bg-black flex items-center justify-center hover:bg-white hover:text-black transition-all"
-              >
-                <Twitter className="w-4 h-4" />
+                <svg
+                  className="w-4 h-4 fill-current"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.28-2.26.54-4.5 2.13-6.04 1.55-1.55 3.75-2.33 5.92-2.13v4.04c-.72-.11-1.51-.01-2.18.28-.85.35-1.54 1.07-1.84 1.93-.35.94-.34 2.02.16 2.92.4.78 1.11 1.41 1.96 1.7 1.1.4 2.37.28 3.4-.29.62-.35 1.13-.88 1.45-1.51.31-.63.46-1.34.45-2.04.01-4.32-.01-8.65.01-12.97.01-.01.01-.01.01-.02Z" />
+                </svg>
               </a>
             </div>
           </div>
@@ -124,7 +126,7 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4 shrink-0" />
-                <span>ebarbershop998@gmail.com</span>
+                <span>info@xclusivebarber.co.za</span>
               </li>
             </ul>
           </div>
@@ -148,13 +150,13 @@ export function Footer() {
 
         <div className="pt-8 border-t border-white/20 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-white/70 font-poppins">
           <p>
-            © 2025 Xclusive Barber - Durban, South Africa. All Rights Reserved.
+            © 2026 Xclusive Barber - Durban, South Africa. All Rights Reserved.
           </p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-white transition-colors">
+            <a href="/privacy-policy" className="hover:text-white transition-colors">
               Privacy Policy
             </a>
-            <a href="#" className="hover:text-white transition-colors">
+            <a href="/terms-of-service" className="hover:text-white transition-colors">
               Terms of Service
             </a>
           </div>

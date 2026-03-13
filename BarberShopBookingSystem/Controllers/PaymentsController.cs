@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace BarberShopBookingSystem.Controllers
 {
@@ -75,11 +76,13 @@ namespace BarberShopBookingSystem.Controllers
     public class PaymentRequest
     {
         public decimal Amount { get; set; }
-        public Guid AppointmentId { get; set; } // Added to track who is paying
+        [JsonPropertyName("appointmentId")]
+        public Guid AppointmentId { get; set; }
     }
 
     public class ConfirmPaymentRequest
     {
+        [JsonPropertyName("appointmentId")]
         public Guid AppointmentId { get; set; }
     }
 }

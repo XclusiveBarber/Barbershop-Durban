@@ -29,15 +29,8 @@ export const metadata: Metadata = {
     "XCLUSIVE BARBER in Davenport, Durban. All types of XCLUSIVE haircuts, hair colouring, bald cuts (chiskop), beard services, and hectic designs. Book now at 121 Helen Joseph Rd, Bulwer.",
   generator: "v0.app",
   icons: {
-    icon: [
-      {
-        url: "/logo2 (2).png",
-      },
-      {
-        url: "/favicon.ico",
-      },
-    ],
-    apple: "/logo2 (2).png",
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
 };
 

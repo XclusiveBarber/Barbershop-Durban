@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS haircuts (
   price NUMERIC(18, 2) NOT NULL,
   description TEXT NOT NULL,
   image_url TEXT,
-  duration_minutes INT NOT NULL DEFAULT 30
+  duration_minutes INT NOT NULL DEFAULT 60
 );
 
 -- 4. Appointments table

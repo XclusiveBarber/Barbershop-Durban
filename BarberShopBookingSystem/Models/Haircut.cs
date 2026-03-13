@@ -7,7 +7,7 @@
         public decimal Price { get; set; }
         public string Description { get; set; }
         public string? ImageUrl { get; set; } // The '?' allows null values from the database
-        public int DurationMinutes { get; set; } = 30; // Appointment duration in minutes
+        public int DurationMinutes { get; set; } = 60; // Appointment duration in minutes
     }
 
 }

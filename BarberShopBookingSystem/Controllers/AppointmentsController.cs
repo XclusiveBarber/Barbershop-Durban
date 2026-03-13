@@ -370,28 +370,6 @@ namespace BarberShopBookingSystem.Controllers
         }
     }
 
-    public class AppointmentCreateDto
-    {
-        // --- CHANGED THIS TO ACCEPT AN ARRAY OF IDs ---
-        [JsonPropertyName("haircutIds")]
-        public List<Guid> HaircutIds { get; set; } = new List<Guid>();
-
-        [JsonPropertyName("appointmentDate")]
-        public DateOnly AppointmentDate { get; set; }
-
-        [JsonPropertyName("timeSlot")]
-        public string TimeSlot { get; set; } = string.Empty;
-
-        [JsonPropertyName("discountAmount")]
-        public decimal DiscountAmount { get; set; }
-
-        [JsonPropertyName("discountCode")]
-        public string? DiscountCode { get; set; }
-
-        [JsonPropertyName("customerPhone")]
-        public string? CustomerPhone { get; set; }
-    }
-
     public class RescheduleDto
     {
         public DateTime NewDate { get; set; }

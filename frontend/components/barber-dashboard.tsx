@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, LogOut, Home, User, CheckCircle, AlertCircle, TrendingUp } from 'lucide-react';
+import { Calendar, Clock, LogOut, Home, User, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useAuth, type AuthUser } from '@/context/auth-context';
-import { calcBarberBreakdown, parsePrice, formatRand } from '@/lib/barber-calculations';
 
 interface Appointment {
   id: string;
@@ -53,7 +52,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
     }
   };
 
-  const updateStatus = async (id: string, status: 'late' | 'completed') => {
+  const updateStatus = async (id: string, status: 'late' | 'completed' | 'cancelled') => {
     setUpdating(id + status);
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -67,6 +66,8 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
         toast.success(
           status === 'completed'
             ? 'Appointment completed. Receipt email sent.'
+            : status === 'cancelled'
+            ? 'Appointment cancelled.'
             : 'Customer marked as late. Notification sent.'
         );
         fetchAppointments();
@@ -99,9 +100,6 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
 
   const todayCompleted = todayAppts.filter(a => a.status === 'completed');
   const todayActive = todayAppts.filter(a => !['completed', 'cancelled'].includes(a.status));
-
-  const totalRevenue = todayCompleted.reduce((sum, a) => sum + parsePrice(a.service_price), 0);
-  const { barberEarnings, shopRevenue } = calcBarberBreakdown(totalRevenue);
 
   const tabList: { id: Tab; label: string; count: number }[] = [
     { id: 'today', label: "Today", count: todayAppts.length },
@@ -170,6 +168,14 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
           <CheckCircle className="w-3 h-3" />
           {updating === appt.id + 'completed' ? 'Completing…' : 'Complete'}
         </button>
+        <button
+          onClick={() => updateStatus(appt.id, 'cancelled')}
+          disabled={!!updating || appt.status === 'cancelled'}
+          className="flex-1 border-2 border-red-200 text-red-500 px-4 py-2 text-xs uppercase tracking-widest hover:bg-red-50 hover:border-red-300 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <X className="w-3 h-3" />
+          {updating === appt.id + 'cancelled' ? 'Cancelling…' : 'Cancel'}
+        </button>
       </div>
     </div>
   );
@@ -233,26 +239,6 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* Today's earnings summary */}
-        {tab === 'today' && totalRevenue > 0 && (
-          <div className="mb-8 border-2 border-black/10 p-6 grid grid-cols-3 gap-6">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-black/30 mb-1 flex items-center gap-2">
-                <TrendingUp className="w-3 h-3" /> Total Revenue
-              </p>
-              <p className="text-2xl font-light">{formatRand(totalRevenue)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-black/30 mb-1">Your Earnings (65%)</p>
-              <p className="text-2xl font-light text-black">{formatRand(barberEarnings)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-black/30 mb-1">Shop Revenue (35%)</p>
-              <p className="text-2xl font-light text-black/50">{formatRand(shopRevenue)}</p>
-            </div>
-          </div>
-        )}
-
         {loading ? (
           <div className="text-center py-24">
             <div className="inline-block w-8 h-8 border-2 border-black/10 border-t-black rounded-full animate-spin" />
@@ -296,23 +282,17 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
                         <th className="px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Service</th>
                         <th className="px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Time</th>
                         <th className="px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Price</th>
-                        <th className="px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Your Earnings (65%)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {completedList.map(appt => {
-                        const price = parsePrice(appt.service_price);
-                        const { barberEarnings: earnings } = calcBarberBreakdown(price);
-                        return (
-                          <tr key={appt.id} className="border-b border-black/5 hover:bg-black/[0.02]">
-                            <td className="px-6 py-4 text-sm">{appt.customer_name}</td>
-                            <td className="px-6 py-4 text-sm text-black/60">{appt.service_name}</td>
-                            <td className="px-6 py-4 text-sm text-black/40">{appt.appointment_time}</td>
-                            <td className="px-6 py-4 text-sm font-medium">{appt.service_price}</td>
-                            <td className="px-6 py-4 text-sm font-semibold">{formatRand(earnings)}</td>
-                          </tr>
-                        );
-                      })}
+                      {completedList.map(appt => (
+                        <tr key={appt.id} className="border-b border-black/5 hover:bg-black/[0.02]">
+                          <td className="px-6 py-4 text-sm">{appt.customer_name}</td>
+                          <td className="px-6 py-4 text-sm text-black/60">{appt.service_name}</td>
+                          <td className="px-6 py-4 text-sm text-black/40">{appt.appointment_time}</td>
+                          <td className="px-6 py-4 text-sm font-medium">{appt.service_price}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>

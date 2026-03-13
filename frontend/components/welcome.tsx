@@ -16,11 +16,11 @@ export const Description = () => {
     <div className="relative box-border caret-transparent gap-x-5 max-w-full gap-y-5 text-center">
       <div className="box-border caret-transparent h-full px-[15px] md:px-[50px]">
         <h2 className="text-black text-[15px] box-border caret-transparent leading-[22.5px] font-montserrat md:text-xl md:leading-7">
-          From our easy-to-use app booking system, get ready for a premium
-          grooming service that stands out from the rest. Sit back and relax in
-          the hands of our top barbers, who are here to deliver the perfect cut.
-          Step out looking sharp, feeling confident, and embracing the best
-          version of yourself.
+          Please note we operate strictly via online bookings on our website—no
+          walk-ins allowed. Get ready for a premium grooming service that stands
+          out from the rest. Sit back and relax in the hands of our top barbers,
+          who are here to deliver the perfect cut. Step out looking sharp,
+          feeling confident, and embracing the best version of yourself.
         </h2>
       </div>
     </div>

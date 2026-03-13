@@ -37,8 +37,8 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-2xl font-semibold font-montserrat text-black mb-4">1. Booking Appointments</h2>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Appointments can be made online through our booking system, by phone, or in person.</li>
-              <li>We recommend booking in advance to secure your preferred time and barber.</li>
+              <li>All bookings must be made strictly through our website booking system. No walk-ins are allowed.</li>
+              <li>Clients may reschedule their original booking once. Any additional rescheduling will require a new booking.</li>
               <li>You must provide accurate and complete information when booking an appointment.</li>
             </ul>
           </section>
@@ -52,15 +52,23 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold font-montserrat text-black mb-4">3. Arrival Time</h2>
+            <h2 className="text-2xl font-semibold font-montserrat text-black mb-4">3. Arrival and Late Policy</h2>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Please aim to arrive 5-10 minutes before your scheduled appointment time.</li>
-              <li>If you arrive late, we will do our best to accommodate you, but your service time may be shortened to avoid delaying the next client. If you are significantly late, we may need to reschedule your appointment.</li>
+              <li>Clients are granted a 15-minute grace period for their appointment.</li>
+              <li>Arrivals exceeding this 15-minute grace period will incur an additional charge of R10.</li>
+              <li>If a client arrives 30 minutes late, the appointment will need to be rescheduled to the next available time slot.</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold font-montserrat text-black mb-4">4. Services and Pricing</h2>
+            <h2 className="text-2xl font-semibold font-montserrat text-black mb-4">4. Discount Policy</h2>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Discounts may not be redeemed simultaneously and cannot be combined with other promotions or offers.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold font-montserrat text-black mb-4">5. Services and Pricing</h2>
             <ul className="list-disc pl-6 space-y-2">
               <li>Our service menu and pricing are subject to change without prior notice.</li>
               <li>We reserve the right to refuse service to anyone for any reason at our discretion, including but not limited to inappropriate behavior or health and safety concerns.</li>
@@ -68,7 +76,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold font-montserrat text-black mb-4">5. Payment</h2>
+            <h2 className="text-2xl font-semibold font-montserrat text-black mb-4">6. Payment</h2>
             <ul className="list-disc pl-6 space-y-2">
               <li>Payment is due in full at the time of service.</li>
               <li>We accept cash and major credit/debit cards.</li>
@@ -76,14 +84,14 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold font-montserrat text-black mb-4">6. Liability</h2>
+            <h2 className="text-2xl font-semibold font-montserrat text-black mb-4">7. Liability</h2>
             <p>
               To the maximum extent permitted by law, Xclusive Barber shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold font-montserrat text-black mb-4">7. Contact Us</h2>
+            <h2 className="text-2xl font-semibold font-montserrat text-black mb-4">8. Contact Us</h2>
             <p>
               If you have any questions about these Terms, please contact us at:
               <br />

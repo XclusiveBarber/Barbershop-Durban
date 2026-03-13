@@ -218,14 +218,18 @@ namespace BarberShopBookingSystem.Controllers
                 PaymentStatus = "unpaid",
                 RescheduleCount = 0,
                 TotalPrice = finalPrice,
-                TotalDurationMinutes = totalDuration, // Saved for future time-blocking math
+                TotalDurationMinutes = totalDuration,
                 AppliedDiscountCode = dto.DiscountCode,
                 CustomerPhone = dto.CustomerPhone
             };
 
+            // 1. ADD THE APPOINTMENT FIRST
             _context.Appointments.Add(appointment);
 
-            // SAVE THE SERVICES TO THE JUNCTION TABLE
+            // 2. SAVE IT TO THE DATABASE SO THE ID EXISTS
+            await _context.SaveChangesAsync();
+
+            // 3. NOW SAVE THE SERVICES TO THE JUNCTION TABLE
             foreach (var haircut in selectedHaircuts)
             {
                 _context.AppointmentServices.Add(new AppointmentService
@@ -235,6 +239,7 @@ namespace BarberShopBookingSystem.Controllers
                 });
             }
 
+            // 4. SAVE THE BRIDGE RECORDS
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetMyAppointments), new { }, appointment);
@@ -368,6 +373,27 @@ namespace BarberShopBookingSystem.Controllers
 
             return Ok("Appointment cancelled and notification sent.");
         }
+    }
+
+    public class AppointmentCreateDto
+    {
+        [JsonPropertyName("haircutIds")]
+        public List<Guid> HaircutIds { get; set; } = new List<Guid>();
+
+        [JsonPropertyName("appointmentDate")]
+        public DateOnly AppointmentDate { get; set; }
+
+        [JsonPropertyName("timeSlot")]
+        public string TimeSlot { get; set; } = string.Empty;
+
+        [JsonPropertyName("discountAmount")]
+        public decimal DiscountAmount { get; set; }
+
+        [JsonPropertyName("discountCode")]
+        public string? DiscountCode { get; set; }
+
+        [JsonPropertyName("customerPhone")]
+        public string? CustomerPhone { get; set; }
     }
 
     public class RescheduleDto

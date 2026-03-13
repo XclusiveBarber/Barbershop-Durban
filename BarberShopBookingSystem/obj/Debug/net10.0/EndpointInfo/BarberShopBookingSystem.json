@@ -736,7 +736,7 @@
       "ConfirmPaymentRequest": {
         "type": "object",
         "properties": {
-          "appointment_id": {
+          "appointmentId": {
             "type": "string",
             "format": "uuid"
           }
@@ -780,7 +780,7 @@
             "type": "number",
             "format": "double"
           },
-          "appointment_id": {
+          "appointmentId": {
             "type": "string",
             "format": "uuid"
           }

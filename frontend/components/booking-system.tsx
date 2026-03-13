@@ -23,6 +23,9 @@ import {
   LogIn,
   UserCheck,
   Scissors,
+  AlertTriangle,
+  ExternalLink,
+  ShieldAlert,
 } from "lucide-react";
 import { format } from "date-fns";
 import { DayPicker } from "react-day-picker";
@@ -38,6 +41,7 @@ interface Service {
   name: string;
   price: number;
   description?: string;
+  duration_minutes?: number;
 }
 
 interface Barber {
@@ -92,6 +96,16 @@ function BookingSummaryCard({
   date: Date | undefined;
   time: string | null;
 }) {
+  // Compute estimated end time
+  const endTime = (() => {
+    if (!time || !service.duration_minutes) return null;
+    const [h, m] = time.split(":").map(Number);
+    const totalMins = h * 60 + m + service.duration_minutes;
+    const eh = Math.floor(totalMins / 60) % 24;
+    const em = totalMins % 60;
+    return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+  })();
+
   return (
     <div className="bg-black/[0.03] border-2 border-black/5 p-5 space-y-3 mb-6">
       <p className="text-[10px] uppercase tracking-widest text-black/30 font-medium mb-3">
@@ -115,7 +129,17 @@ function BookingSummaryCard({
         <span className="text-black/50 flex items-center gap-2">
           <Clock className="w-3.5 h-3.5" /> Time
         </span>
-        <span className="font-medium text-black">{time ?? "—"}</span>
+        <span className="font-medium text-black">
+          {time ?? "—"}
+          {endTime && (
+            <span className="text-black/40 font-normal"> – {endTime}</span>
+          )}
+          {service.duration_minutes && (
+            <span className="text-black/30 font-normal text-xs ml-1">
+              ({service.duration_minutes} min)
+            </span>
+          )}
+        </span>
       </div>
       <div className="pt-3 border-t border-black/10 flex justify-between">
         <span className="font-semibold text-sm text-black">Total</span>
@@ -208,13 +232,20 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   // ── Submission ────────────────────────────────────────────────────────────
 
   const [isRedirectingToPayment, setIsRedirectingToPayment] = useState(false);
+  const [showPaymentWarning, setShowPaymentWarning] = useState(false);
 
-  const handleConfirm = async () => {
+  /** Show the external-redirect warning modal before initiating payment */
+  const handleConfirm = () => {
     if (!isLoggedIn || !user) {
       toast.error("You must be logged in to confirm your booking.");
       return;
     }
+    setShowPaymentWarning(true);
+  };
 
+  /** Called after the user accepts the redirect warning */
+  const handleProceedToPayment = async () => {
+    setShowPaymentWarning(false);
     setIsRedirectingToPayment(true);
 
     try {
@@ -281,6 +312,15 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
       setIsRedirectingToPayment(false);
     }
   };
+
+  // ── Policy items ──────────────────────────────────────────────────────────
+
+  const BOOKING_POLICIES = [
+    { icon: "⏰", title: "Advance booking", detail: "Appointments must be booked at least 30 minutes in advance." },
+    { icon: "🔁", title: "One reschedule only", detail: "Each appointment may be rescheduled once, with at least 2 hours' notice." },
+    { icon: "⚠️", title: "Late arrival fee", detail: "Arriving 15–29 minutes late incurs a R10 fee. Arrivals 30+ minutes late must reschedule." },
+    { icon: "❌", title: "Cancellations", detail: "Cancellations are permitted before your appointment time. No-shows are not refunded." },
+  ];
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -361,6 +401,11 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                           <div>
                             <p className="font-medium text-base text-black">{service.name}</p>
                             <p className="text-xs text-black/40 mt-0.5">{service.description || "Haircut service"}</p>
+                            {service.duration_minutes && (
+                              <p className="text-xs text-black/30 mt-0.5 flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {service.duration_minutes} min
+                              </p>
+                            )}
                           </div>
                           <div className="text-right flex items-center gap-3">
                             <p className="font-semibold text-base text-black">R{service.price}</p>
@@ -452,12 +497,51 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                           <p className="text-xs text-black/40">{user.email}</p>
                         </div>
                       </div>
+
+                      {/* ── Booking Policies ──────────────────────────── */}
+                      <div className="border-2 border-black/10 p-5">
+                        <p className="text-[10px] uppercase tracking-widest text-black/40 font-medium mb-4 flex items-center gap-2">
+                          <ShieldAlert className="w-3.5 h-3.5" /> Booking Policies
+                        </p>
+                        <ul className="space-y-3">
+                          {BOOKING_POLICIES.map((policy) => (
+                            <li key={policy.title} className="flex gap-3 text-sm">
+                              <span className="text-base leading-none mt-0.5">{policy.icon}</span>
+                              <span>
+                                <span className="font-medium text-black">{policy.title}: </span>
+                                <span className="text-black/50">{policy.detail}</span>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* ── External Payment Notice ────────────────────── */}
+                      <div className="flex items-start gap-3 p-4 border-2 border-amber-200 bg-amber-50">
+                        <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-800 leading-relaxed">
+                          By clicking <strong>Confirm &amp; Pay</strong> you will be redirected to{" "}
+                          <strong>Yoco</strong>, our secure external payment provider, to complete
+                          your transaction. You will be returned to this site after payment.
+                        </p>
+                      </div>
+
                       <button
                         onClick={handleConfirm}
                         disabled={isRedirectingToPayment}
-                        className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
-                        {isRedirectingToPayment ? "Redirecting to payment..." : "Confirm & Pay"}
+                        {isRedirectingToPayment ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Securing your slot…
+                          </>
+                        ) : (
+                          <>
+                            <ExternalLink className="w-4 h-4" />
+                            Confirm &amp; Pay via Yoco
+                          </>
+                        )}
                       </button>
                     </>
                   ) : (
@@ -520,6 +604,51 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
           </div>
         </div>
       </div>
+
+      {/* ── Payment Redirect Warning Modal ────────────────────────────────── */}
+      {showPaymentWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.18 }}
+            className="bg-white max-w-md w-full p-8 shadow-2xl"
+          >
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <ExternalLink className="w-5 h-5 text-amber-600" />
+              </div>
+              <h4 className="text-lg font-semibold text-black">
+                You&apos;re leaving this site
+              </h4>
+            </div>
+            <p className="text-sm text-black/60 leading-relaxed mb-6">
+              You will be redirected to <strong className="text-black">Yoco</strong>, a secure
+              third-party payment provider, to complete your payment of{" "}
+              <strong className="text-black">R{selectedService?.price}</strong>. After a
+              successful payment you will be brought back here automatically.
+            </p>
+            <p className="text-xs text-black/40 mb-8">
+              Your appointment slot will be held while you complete payment. If you close the Yoco
+              page without paying, the booking will remain pending.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleProceedToPayment}
+                className="flex-1 bg-accent text-accent-foreground py-3 text-sm uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Continue to Payment
+              </button>
+              <button
+                onClick={() => setShowPaymentWarning(false)}
+                className="flex-1 border-2 border-black/10 text-black/50 py-3 text-sm uppercase tracking-widest font-semibold font-montserrat hover:border-black/30 hover:text-black transition-all"
+              >
+                Go Back
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </section>
   );
 }

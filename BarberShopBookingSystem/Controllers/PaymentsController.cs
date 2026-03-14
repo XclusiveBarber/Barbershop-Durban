@@ -107,7 +107,11 @@ namespace BarberShopBookingSystem.Controllers
             }
 
             // If they just typed the URL into their browser but didn't pay:
-            return BadRequest("Payment has not been completed. Please finish the transaction on Yoco.");
+            // Grab the exact word Yoco is using
+            var exactStatus = yocoData.GetProperty("status").GetString();
+
+            // Tell the frontend exactly what Yoco said!
+            return BadRequest($"Payment not complete. Yoco says the status is: '{exactStatus}'");
         }
     }
 

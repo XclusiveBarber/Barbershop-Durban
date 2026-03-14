@@ -559,48 +559,93 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
       {/* ── Reschedule Modal ────────────────────────────────── */}
       {isRescheduleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-white max-w-2xl w-full p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white w-full max-w-md p-8 shadow-2xl overflow-y-auto max-h-[95vh]">
+            <div className="flex justify-between items-center mb-8">
               <h3 className="text-2xl font-light text-black">Reschedule Appointment</h3>
               <button onClick={() => setIsRescheduleModalOpen(false)} className="text-black/50 hover:text-black border-2 border-transparent hover:border-black/10 p-2 rounded transition-all">
                 <X className="w-6 h-6" />
               </button>
             </div>
-            
-            <div className="grid md:grid-cols-2 gap-10">
-              <div className="flex justify-center border border-black/10 p-4">
+
+            <div className="space-y-8">
+              {/* Calendar */}
+              <div className="border-2 border-black/10 p-4 bg-white">
+                <style>{`
+                  .rdp {
+                    --rdp-cell-size: 45px;
+                    --rdp-accent-color: #000000;
+                    --rdp-background-color: #f3f3f3;
+                    margin: 0;
+                    width: 100%;
+                  }
+                  .rdp-day_selected:not([disabled]) {
+                    background-color: var(--rdp-accent-color) !important;
+                    color: white !important;
+                    font-weight: 600;
+                  }
+                  .rdp-day_selected:focus-visible,
+                  .rdp-day_selected:hover {
+                    background-color: var(--rdp-accent-color) !important;
+                    color: white !important;
+                  }
+                  .rdp-head_cell {
+                    font-size: 11px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    color: #000000;
+                  }
+                  .rdp-cell {
+                    padding: 2px;
+                  }
+                  .rdp-day {
+                    border-radius: 4px;
+                  }
+                `}</style>
                 <DayPicker
                   mode="single"
                   selected={rescheduleDate}
                   onSelect={setRescheduleDate}
                   disabled={{ before: new Date() }}
-                  className="p-0 m-0"
+                  className="flex justify-center"
                 />
               </div>
+
+              {/* Time slots */}
               <div className="space-y-4">
                 <p className="text-xs font-medium uppercase tracking-widest text-black/40 flex items-center gap-2">
                   <Clock className="w-4 h-4" /> Available Times
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {availableRescheduleSlots.length === 0 ? (
-                    <p className="col-span-2 text-xs text-black/40 py-4">Loading available times...</p>
-                  ) : (
-                    availableRescheduleSlots.map((time) => (
-                      <button
-                        key={time}
-                        onClick={() => setRescheduleTime(time)}
-                        className={`p-3 text-sm border-2 transition-all ${
-                          rescheduleTime === time
-                            ? "bg-black text-white border-black"
-                            : "border-black/10 hover:border-black text-black"
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    ))
-                  )}
+                {!rescheduleDate && (
+                  <p className="text-xs text-black/40 py-4 text-center bg-black/5 p-3">Select a date to see available times</p>
+                )}
+                {rescheduleDate && availableRescheduleSlots.length === 0 && (
+                  <p className="text-xs text-black/40 py-4 text-center bg-black/5 p-3">No available times for this date</p>
+                )}
+                <div className="grid grid-cols-3 gap-2">
+                  {availableRescheduleSlots.map((time) => (
+                    <button
+                      key={time}
+                      onClick={() => setRescheduleTime(time)}
+                      className={`p-3 text-xs font-medium border-2 transition-all rounded ${
+                        rescheduleTime === time
+                          ? "bg-black text-white border-black"
+                          : "border-black/10 hover:border-black text-black hover:bg-black/5"
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  ))}
                 </div>
               </div>
+
+              {/* Selected info */}
+              {rescheduleDate && rescheduleTime && (
+                <div className="border-2 border-accent/30 bg-accent/5 p-4 text-sm">
+                  <p className="text-black/60">
+                    <strong>New time:</strong> {format(rescheduleDate, 'EEEE, MMMM d, yyyy')} at {rescheduleTime}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="mt-8 flex gap-3">

@@ -565,6 +565,20 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
             </div>
 
             {/* Side-by-side: calendar left, slots right — mirrors booking Step 2 */}
+            <style>{`
+              .rdp {
+                --rdp-cell-size: 40px;
+                --rdp-accent-color: #000000;
+                --rdp-background-color: #f3f3f3;
+                margin: 0;
+              }
+              .rdp-day_selected,
+              .rdp-day_selected:focus-visible,
+              .rdp-day_selected:hover {
+                background-color: var(--rdp-accent-color) !important;
+                color: white !important;
+              }
+            `}</style>
             <div className="grid md:grid-cols-2 gap-10">
               {/* Calendar */}
               <div className="flex justify-center border border-black/10 p-4">

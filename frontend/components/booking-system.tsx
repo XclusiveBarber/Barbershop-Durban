@@ -94,18 +94,7 @@ function BookingSummaryCard({
   date: Date | undefined;
   time: string | null;
 }) {
-  const totalDuration = services.reduce((acc, s) => acc + (s.duration_minutes || 0), 0);
   const totalPrice = services.reduce((acc, s) => acc + Number(s.price), 0);
-
-  // Compute estimated end time
-  const endTime = (() => {
-    if (!time || !totalDuration) return null;
-    const [h, m] = time.split(":").map(Number);
-    const totalMins = h * 60 + m + totalDuration;
-    const eh = Math.floor(totalMins / 60) % 24;
-    const em = totalMins % 60;
-    return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
-  })();
 
   return (
     <div className="bg-black/[0.03] border-2 border-black/5 p-5 space-y-3 mb-6">
@@ -134,14 +123,6 @@ function BookingSummaryCard({
         </span>
         <span className="font-medium text-black">
           {time ?? "—"}
-          {endTime && (
-            <span className="text-black/40 font-normal"> – {endTime}</span>
-          )}
-          {totalDuration > 0 && (
-            <span className="text-black/30 font-normal text-xs ml-1">
-              ({totalDuration} min)
-            </span>
-          )}
         </span>
       </div>
       <div className="pt-3 border-t border-black/10 flex justify-between">
@@ -248,6 +229,10 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
       toast.error("You must be logged in to confirm your booking.");
       return;
     }
+    if (!phoneState.trim()) {
+      toast.error("Please enter your phone number before confirming.");
+      return;
+    }
     setShowPaymentWarning(true);
   };
 
@@ -325,7 +310,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   // ── Policy items ──────────────────────────────────────────────────────────
 
   const BOOKING_POLICIES = [
-    { icon: <Clock className="w-4 h-4" />, title: "Advance booking", detail: "Appointments must be booked at least 30 minutes in advance." },
+    { icon: <Clock className="w-4 h-4" />, title: "Advance booking", detail: "Appointments must be booked at least 1 hour in advance." },
     { icon: <CalendarIcon className="w-4 h-4" />, title: "One reschedule only", detail: "Each appointment may be rescheduled once, with at least 2 hours' notice." },
     { icon: <AlertTriangle className="w-4 h-4" />, title: "Late arrival fee", detail: "Arriving 15–29 minutes late incurs a R10 fee. Arrivals 30+ minutes late must reschedule." },
     { icon: <ShieldAlert className="w-4 h-4" />, title: "Cancellations", detail: "Cancellations are permitted before your appointment time. No-shows are not refunded." },

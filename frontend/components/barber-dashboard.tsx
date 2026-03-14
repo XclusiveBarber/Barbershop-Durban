@@ -111,20 +111,26 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
     router.push('/');
   };
 
-  // ─ Tab filtering ────────────────────────────────────────────────────────
-
+  // ─ Updated Tab filtering ──────────────────────────────────────────────────
+  // Today should only count appointments that are still "active" (pending/confirmed/late)
   const todayAppts = appointments.filter(
-    a => a.appointment_date === todayStr && a.status !== 'cancelled'
+    a => a.appointment_date === todayStr &&
+      !['cancelled', 'completed', 'no-show'].includes(a.status) // Exclude finished ones
   );
+
   const upcomingAppts = appointments.filter(
-    a => a.appointment_date > todayStr && !['cancelled', 'completed'].includes(a.status)
+    a => a.appointment_date > todayStr &&
+      !['cancelled', 'completed', 'no-show'].includes(a.status)
   );
+
+  // History should contain everything that is finished
   const historyAppts = appointments.filter(
-    a => a.status === 'completed' || (a.appointment_date < todayStr && a.status !== 'cancelled')
+    a => ['completed', 'cancelled', 'no-show'].includes(a.status) ||
+      a.appointment_date < todayStr
   );
 
   const todayCompleted = todayAppts.filter(a => a.status === 'completed');
-  const todayActive = todayAppts.filter(a => !['completed', 'cancelled'].includes(a.status));
+  const todayActive = todayAppts.filter(a => !['completed', 'cancelled', 'no-show'].includes(a.status));
 
   const tabList: { id: Tab; label: string; count: number }[] = [
     { id: 'today', label: "Today", count: todayAppts.length },

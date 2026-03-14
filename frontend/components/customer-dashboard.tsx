@@ -48,24 +48,6 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
   const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
   const [isRescheduling, setIsRescheduling] = useState(false);
 
-  const getSlotsForDate = (date: Date): string[] =>
-    date.getDay() === 0
-      ? ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00"]
-      : ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
-
-  /** Remove time slots that have already passed when selected date is today */
-  const filterFutureSlots = (slots: string[], selectedDate: Date | undefined): string[] => {
-    if (!selectedDate) return slots;
-    const now = new Date();
-    const isToday =
-      selectedDate.getFullYear() === now.getFullYear() &&
-      selectedDate.getMonth() === now.getMonth() &&
-      selectedDate.getDate() === now.getDate();
-    if (!isToday) return slots;
-    const currentHour = now.getHours();
-    return slots.filter((slot) => parseInt(slot.split(":")[0], 10) > currentHour);
-  };
-
   useEffect(() => {
     if (!rescheduleDate) {
       setAvailableRescheduleSlots([]);
@@ -75,9 +57,10 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
       setLoadingRescheduleSlots(true);
       try {
         const dateStr = format(rescheduleDate, "yyyy-MM-dd");
-        const res = await fetch(`/api/availability?date=${dateStr}`);
+        const res = await fetch(`/api/appointments/available-slots?date=${dateStr}`);
         const data = await res.json();
-        setAvailableRescheduleSlots(Array.isArray(data.available_slots) ? data.available_slots : []);
+        // C# returns a plain string array e.g. ["09:00", "10:00"]
+        setAvailableRescheduleSlots(Array.isArray(data) ? data : []);
       } catch (error) {
         setAvailableRescheduleSlots([]);
       } finally {
@@ -631,23 +614,19 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                     <p className="col-span-2 text-xs text-black/40 py-4">Select a date first</p>
                   ) : loadingRescheduleSlots ? (
                     <p className="col-span-2 text-xs text-black/40 py-4">Loading available times...</p>
-                  ) : filterFutureSlots(getSlotsForDate(rescheduleDate ?? new Date()), rescheduleDate).length === 0 ? (
-                    <p className="col-span-2 text-xs text-black/40 py-4">No more slots available today — select another date.</p>
+                  ) : availableRescheduleSlots.length === 0 ? (
+                    <p className="col-span-2 text-xs text-black/40 py-4">No slots available for this date — select another date.</p>
                   ) : (
-                    filterFutureSlots(getSlotsForDate(rescheduleDate ?? new Date()), rescheduleDate).map((time) => {
-                      const isOpen = availableRescheduleSlots.includes(time);
+                    availableRescheduleSlots.map((time) => {
                       const isSelected = rescheduleTime === time;
                       return (
                         <button
                           key={time}
-                          onClick={() => isOpen && setRescheduleTime(time)}
-                          disabled={!isOpen}
+                          onClick={() => setRescheduleTime(time)}
                           className={`p-3 text-sm border-2 transition-all ${
                             isSelected
                               ? "bg-black text-white border-black"
-                              : isOpen
-                              ? "border-black/10 hover:border-black text-black"
-                              : "border-black/5 text-black/20 bg-black/[0.02] cursor-not-allowed line-through"
+                              : "border-black/10 hover:border-black text-black"
                           }`}
                         >
                           {time}

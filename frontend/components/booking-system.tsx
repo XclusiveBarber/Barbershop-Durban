@@ -51,39 +51,8 @@ interface Barber {
   image_url?: string;
 }
 
-/** Returns the correct time slots based on day of week.
- *  Mon–Sat: 09:00–18:00 (shop open until 19:00)
- *  Sunday:  09:00–14:00 (shop open until 15:00)
- */
-function getSlotsForDate(date: Date): string[] {
-  return date.getDay() === 0
-    ? ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00"]
-    : ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
-}
-
-/** For a given date, remove any time slots that have already passed (today only) */
-function filterFutureSlots(slots: string[], selectedDate: Date | undefined): string[] {
-  if (!selectedDate) return slots;
-  const now = new Date();
-  const isToday =
-    selectedDate.getFullYear() === now.getFullYear() &&
-    selectedDate.getMonth() === now.getMonth() &&
-    selectedDate.getDate() === now.getDate();
-  if (!isToday) return slots;
-  const currentHour = now.getHours();
-  return slots.filter((slot) => parseInt(slot.split(":")[0], 10) > currentHour);
-}
-
-/** Auto-advance to tomorrow if there are no future slots left today */
 function getInitialBookingDate(): Date {
-  const now = new Date();
-  const todaySlots = getSlotsForDate(now);
-  if (filterFutureSlots(todaySlots, now).length === 0) {
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow;
-  }
-  return now;
+  return new Date();
 }
 
 // ─── More Types ──────────────────────────────────────────────────────────────
@@ -226,11 +195,11 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
       setLoadingSlotsData(true);
       try {
         const dateStr = format(selectedDate, "yyyy-MM-dd");
-        const res = await fetch(`/api/availability?date=${dateStr}`);
+        const res = await fetch(`/api/appointments/available-slots?date=${dateStr}`);
         const data = await res.json();
-        // C# returns { available_slots: [...] } — only slots with a free barber
-        // Default to [] on bad/missing data — never assume all slots are free
-        setAvailableSlots(Array.isArray(data.available_slots) ? data.available_slots : []);
+        // C# returns a plain string array e.g. ["09:00", "10:00"]
+        // It handles day-of-week hours, barber capacity, and past-slot filtering
+        setAvailableSlots(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Failed to fetch availability:", error);
         setAvailableSlots([]);
@@ -515,7 +484,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                       <DayPicker
                         mode="single"
                         selected={selectedDate}
-                        onSelect={setSelectedDate}
+                        onSelect={(date) => { setSelectedDate(date); setSelectedTime(null); }}
                         disabled={{ before: new Date() }}
                         className="p-0 m-0 w-full"
                       />
@@ -527,23 +496,19 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                       <div className="grid grid-cols-2 gap-2">
                         {loadingSlotsData ? (
                           <p className="col-span-2 text-xs text-black/40 py-4">Loading available times...</p>
-                        ) : filterFutureSlots(getSlotsForDate(selectedDate ?? new Date()), selectedDate).length === 0 ? (
-                          <p className="col-span-2 text-xs text-black/40 py-4">No more slots available today — select another date.</p>
+                        ) : availableSlots.length === 0 ? (
+                          <p className="col-span-2 text-xs text-black/40 py-4">No slots available for this date — select another date.</p>
                         ) : (
-                          filterFutureSlots(getSlotsForDate(selectedDate ?? new Date()), selectedDate).map((time) => {
-                            const isOpen = availableSlots.includes(time);
+                          availableSlots.map((time) => {
                             const isSelected = selectedTime === time;
                             return (
                               <button
                                 key={time}
-                                onClick={() => isOpen && setSelectedTime(time)}
-                                disabled={!isOpen}
+                                onClick={() => setSelectedTime(time)}
                                 className={`p-3 text-sm border-2 transition-all ${
                                   isSelected
                                     ? "bg-black text-white border-black"
-                                    : isOpen
-                                    ? "border-black/10 hover:border-black text-black"
-                                    : "border-black/5 text-black/20 bg-black/[0.02] cursor-not-allowed line-through"
+                                    : "border-black/10 hover:border-black text-black"
                                 }`}
                               >
                                 {time}

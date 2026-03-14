@@ -292,12 +292,13 @@ namespace BarberShopBookingSystem.Controllers
             await _context.SaveChangesAsync();
 
             // 5. SEND BOOKING CONFIRMATION EMAIL
-            var customerProfile = await _context.Profiles.FindAsync(userId);
-            if (customerProfile != null && !string.IsNullOrEmpty(customerProfile.Email))
+            // Get email from JWT claim — more reliable than profile lookup since Email can be null
+            var customerEmail = User.FindFirst("email")?.Value;
+            if (!string.IsNullOrEmpty(customerEmail))
             {
                 var serviceNames = string.Join(", ", selectedHaircuts.Select(h => h.Name));
                 await emailService.SendBookingConfirmationEmail(
-                    customerProfile.Email,
+                    customerEmail,
                     appointment.AppointmentDate.ToString("yyyy-MM-dd"),
                     appointment.TimeSlot,
                     serviceNames,
@@ -455,8 +456,9 @@ namespace BarberShopBookingSystem.Controllers
             await _context.SaveChangesAsync();
 
             var profile = await _context.Profiles.FindAsync(appointment.UserId);
-            if (profile != null && !string.IsNullOrEmpty(profile.Email))
-                await emailService.SendCancellationEmail(profile.Email, appointment.AppointmentDate.ToString("yyyy-MM-dd"), appointment.TimeSlot);
+            var cancelEmail = profile?.Email;
+            if (!string.IsNullOrEmpty(cancelEmail))
+                await emailService.SendCancellationEmail(cancelEmail, appointment.AppointmentDate.ToString("yyyy-MM-dd"), appointment.TimeSlot);
 
             return Ok("Appointment cancelled and notification sent.");
         }

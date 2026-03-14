@@ -96,7 +96,8 @@ namespace BarberShopBookingSystem.Controllers
             var yocoData = JsonSerializer.Deserialize<JsonElement>(jsonResponse);
 
             // 5. SECURITY FIX: Check Yoco's official status
-            if (yocoData.GetProperty("status").GetString() == "paid")
+            // Yoco Checkout API returns "complete" (not "paid") for a successful checkout
+            if (yocoData.GetProperty("status").GetString() == "complete")
             {
                 // Update the database to reflect the successful payment AND confirm the booking
                 appointment.PaymentStatus = "paid";

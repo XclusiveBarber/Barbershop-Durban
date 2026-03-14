@@ -228,10 +228,13 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
             </span>
           </Link>
           <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-2 text-sm text-white/60 font-semibold font-montserrat">
+            <button
+              onClick={() => setActiveTab('profile')}
+              className="hidden md:flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors font-semibold font-montserrat"
+            >
               <User className="w-4 h-4" />
               {user.name || 'Guest'}
-            </div>
+            </button>
             <Link href="/" className="text-sm text-white/60 hover:text-white transition-colors font-semibold font-montserrat flex items-center gap-2">
               <Home className="w-4 h-4" /> Home
             </Link>

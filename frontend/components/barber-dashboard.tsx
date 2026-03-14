@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, LogOut, Home, User, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Calendar, Clock, LogOut, Home, User, CheckCircle, AlertCircle, X, Save, Settings } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useAuth, type AuthUser } from '@/context/auth-context';
+import { updateProfile, updateUserEmail } from '@/lib/supabase-auth';
 
 interface Appointment {
   id: string;
@@ -21,15 +22,21 @@ interface Appointment {
   barber_name: string;
 }
 
-type Tab = 'today' | 'upcoming' | 'history';
+type Tab = 'today' | 'upcoming' | 'history' | 'settings';
 
 export function BarberDashboard({ user }: { user: AuthUser }) {
   const router = useRouter();
-  const { logout, accessToken } = useAuth();
+  const { logout, accessToken, updateUser } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('today');
+
+  // Profile edit state
+  const [editName, setEditName] = useState(user.name || '');
+  const [editEmail, setEditEmail] = useState(user.email || '');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [emailVerificationSent, setEmailVerificationSent] = useState(false);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
@@ -106,6 +113,43 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
     }
   };
 
+  const handleSaveProfile = async () => {
+    const trimmedName = editName.trim();
+    const trimmedEmail = editEmail.trim();
+
+    if (!trimmedName) { toast.error('Name cannot be empty'); return; }
+    if (!trimmedEmail) { toast.error('Email cannot be empty'); return; }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) { toast.error('Please enter a valid email address'); return; }
+
+    setSavingProfile(true);
+    try {
+      const updates: any = { name: trimmedName };
+
+      if (trimmedEmail !== user.email) {
+        try {
+          await updateUserEmail(trimmedEmail);
+          updates.email = trimmedEmail;
+          setEmailVerificationSent(true);
+          toast.success('Email updated! A verification link has been sent to your new email address.');
+        } catch (emailError: any) {
+          toast.error(emailError.message || 'Failed to update email');
+          setSavingProfile(false);
+          return;
+        }
+      }
+
+      await updateProfile(user.id, updates);
+      updateUser({ name: trimmedName });
+      toast.success('Profile updated successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     router.push('/');
@@ -132,10 +176,11 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
   const todayCompleted = todayAppts.filter(a => a.status === 'completed');
   const todayActive = todayAppts.filter(a => !['completed', 'cancelled', 'no-show'].includes(a.status));
 
-  const tabList: { id: Tab; label: string; count: number }[] = [
+  const tabList: { id: Tab; label: string; count: number; icon?: ReactNode }[] = [
     { id: 'today', label: "Today", count: todayAppts.length },
     { id: 'upcoming', label: 'Upcoming', count: upcomingAppts.length },
     { id: 'history', label: 'History', count: historyAppts.length },
+    { id: 'settings', label: 'Settings', count: 0, icon: <Settings className="w-3.5 h-3.5" /> },
   ];
 
   const activeList = tab === 'today' ? todayActive : tab === 'upcoming' ? upcomingAppts : [];
@@ -235,10 +280,13 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
             </span>
           </Link>
           <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-2 text-sm text-white/60 font-semibold font-montserrat">
+            <button
+              onClick={() => setTab('settings')}
+              className="hidden md:flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors font-semibold font-montserrat"
+            >
               <User className="w-4 h-4" />
               {user.name}
-            </div>
+            </button>
             <Link href="/" className="text-sm text-white/60 hover:text-white transition-colors font-semibold font-montserrat flex items-center gap-2">
               <Home className="w-4 h-4" /> Home
             </Link>
@@ -262,6 +310,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
                   : 'border-transparent text-black/30 hover:text-black/60'
               }`}
             >
+              {t.icon}
               {t.label}
               {t.count > 0 && (
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
@@ -384,6 +433,96 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
 
           </div>
         )}
+
+        {/* Settings tab */}
+        {tab === 'settings' && (
+          <div className="max-w-lg space-y-10">
+            <section>
+              <span className="text-black/40 uppercase tracking-widest text-xs mb-6 block">Account Information</span>
+              <div className="border-2 border-black/10 divide-y divide-black/5">
+                {/* Name */}
+                <div className="p-6">
+                  <label className="text-[10px] uppercase tracking-widest text-black/40 font-medium block mb-3">
+                    Display Name
+                  </label>
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Your full name"
+                      className="flex-1 border-2 border-black/10 px-4 py-2.5 text-sm focus:outline-none focus:border-black transition-colors bg-white"
+                    />
+                    <button
+                      onClick={handleSaveProfile}
+                      disabled={savingProfile || editName.trim() === user.name}
+                      className="px-5 py-2.5 bg-accent text-accent-foreground text-xs uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      {savingProfile ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div className="p-6">
+                  <label className="text-[10px] uppercase tracking-widest text-black/40 font-medium block mb-3">
+                    Email Address
+                  </label>
+                  <div className="flex gap-3">
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="flex-1 border-2 border-black/10 px-4 py-2.5 text-sm focus:outline-none focus:border-black transition-colors bg-white"
+                    />
+                    <button
+                      onClick={handleSaveProfile}
+                      disabled={savingProfile || (editEmail.trim() === user.email && editName.trim() === user.name)}
+                      className="px-5 py-2.5 bg-accent text-accent-foreground text-xs uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      {savingProfile ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                  {emailVerificationSent && (
+                    <p className="text-[11px] text-accent mt-2">
+                      ✓ Verification email sent. Check your inbox to confirm the change.
+                    </p>
+                  )}
+                  <p className="text-[11px] text-black/30 mt-2">
+                    Changing your email will require verification via a link sent to your new email address.
+                  </p>
+                </div>
+
+                {/* Role */}
+                <div className="p-6">
+                  <label className="text-[10px] uppercase tracking-widest text-black/40 font-medium block mb-3">
+                    Account Type
+                  </label>
+                  <span className="inline-block px-3 py-1 bg-black/5 text-black/50 text-[10px] uppercase tracking-widest font-medium">
+                    {user.role}
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <span className="text-black/40 uppercase tracking-widest text-xs mb-6 block">Session</span>
+              <div className="border-2 border-black/10 p-6">
+                <p className="text-sm text-black/60 mb-4">Sign out of your account on this device.</p>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 border-2 border-black/10 text-black/50 px-6 py-2.5 text-xs uppercase tracking-widest font-semibold font-montserrat hover:border-black/30 hover:text-black transition-all"
+                >
+                  <LogOut className="w-3.5 h-3.5" /> Sign Out
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
       </div>
     </div>
   );

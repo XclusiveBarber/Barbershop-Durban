@@ -96,11 +96,6 @@
         "Name": "id",
         "Type": "System.Guid",
         "IsRequired": true
-      },
-      {
-        "Name": "minutesLate",
-        "Type": "System.Int32",
-        "IsRequired": true
       }
     ],
     "ReturnTypes": []

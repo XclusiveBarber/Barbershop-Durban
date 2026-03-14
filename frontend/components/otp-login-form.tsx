@@ -104,9 +104,11 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
     setGoogleLoading(true);
     setError(null);
     try {
-      const callbackUrl = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(
-        new URLSearchParams(window.location.search).get("returnTo") ?? "/dashboard"
-      )}`;
+      // Dynamically return to the current page URL (e.g., /#book) instead of forcing /dashboard
+      const currentPath = window.location.pathname + window.location.hash || "/#book";
+      const returnPath = new URLSearchParams(window.location.search).get("returnTo") ?? currentPath;
+
+      const callbackUrl = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnPath)}`;
       await signInWithGoogle(callbackUrl);
       // Browser will redirect — no further action needed here
     } catch (err) {

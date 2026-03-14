@@ -66,6 +66,24 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- RLS Policies for profiles table
+-- Run these to fix the INSERT policy that blocked non-admin users from creating their own profile
+
+-- Drop the overly restrictive policy
+DROP POLICY IF EXISTS "Profiles INSERT" ON public.profiles;
+
+-- Allow users to insert their own profile during onboarding
+CREATE POLICY "Profiles INSERT" ON public.profiles
+  FOR INSERT WITH CHECK (auth.uid() = id OR is_admin());
+
+-- Ensure the UPDATE policy explicitly allows users to update their own records
+DROP POLICY IF EXISTS "Profiles UPDATE" ON public.profiles;
+
+CREATE POLICY "Profiles UPDATE" ON public.profiles
+  FOR UPDATE
+  USING (auth.uid() = id OR is_admin())
+  WITH CHECK (auth.uid() = id OR is_admin());
+
 -- Sync email updates from auth.users to profiles table
 CREATE OR REPLACE FUNCTION public.handle_user_email_update()
 RETURNS TRIGGER AS $$

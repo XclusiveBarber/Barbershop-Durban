@@ -213,8 +213,33 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
 
   // ── Step 3 helpers ────────────────────────────────────────────────────────
 
+  // Restores booking state if they were redirected back from Google Auth
+  useEffect(() => {
+    const savedBooking = sessionStorage.getItem("pendingBooking");
+    if (savedBooking && isLoggedIn) {
+      try {
+        const data = JSON.parse(savedBooking);
+        setSelectedServices(data.services);
+        setSelectedDate(new Date(data.date));
+        setSelectedTime(data.time);
+        setStep(3); // Jump straight to the confirm/payment step!
+        sessionStorage.removeItem("pendingBooking"); // Clean up
+      } catch (e) {
+        console.error("Failed to restore booking state", e);
+      }
+    }
+  }, [isLoggedIn]);
+
   /** Called when user wants to enter step 3 */
   const enterStep3 = () => {
+    if (!isLoggedIn) {
+      // Temporarily cache the booking in case OAuth forces a full page redirect
+      sessionStorage.setItem("pendingBooking", JSON.stringify({
+        services: selectedServices,
+        date: selectedDate,
+        time: selectedTime,
+      }));
+    }
     setStep(3);
   };
 

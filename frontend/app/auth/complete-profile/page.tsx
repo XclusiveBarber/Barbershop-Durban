@@ -68,20 +68,6 @@ function CompleteProfileContent() {
           name: name.trim(),
           role: "customer",
         });
-        // Send welcome email for brand new accounts
-        fetch('/api/emails/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_INTERNAL_EMAIL_SECRET ?? ''}`,
-          },
-          body: JSON.stringify({
-            type: 'WELCOME',
-            to: authUser.email ?? "",
-            subject: 'Welcome to Xclusive Barber!',
-            payload: { fullName: name.trim() },
-          }),
-        }).catch(() => {}); // fire-and-forget
       }
 
       const userData: AuthUser = {

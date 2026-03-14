@@ -335,31 +335,30 @@ namespace BarberShopBookingSystem.Controllers
         public async Task<IActionResult> HandleLateArrival(Guid id)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (userIdClaim == null) return Unauthorized();
-            var adminProfile = await _context.Profiles.FindAsync(Guid.Parse(userIdClaim));
-            if (adminProfile == null || adminProfile.Role != "admin") return Forbid();
+            if (userIdClaim == null) return Unauthorized(new { error = "Not logged in" });
+
+            var userProfile = await _context.Profiles.FindAsync(Guid.Parse(userIdClaim));
+
+            // THE FIX: Allow both admins AND barbers to use this button!
+            if (userProfile == null || (userProfile.Role != "admin" && userProfile.Role != "barber"))
+                return Forbid();
 
             var appointment = await _context.Appointments.FindAsync(id);
-            if (appointment == null) return NotFound();
+            if (appointment == null) return NotFound(new { error = "Appointment not found." });
 
-            // 1. Prevent double-charging if they click the button twice!
             if (appointment.IsLate)
                 return BadRequest(new { error = "This appointment is already marked as late." });
 
-            // 2. Parse the scheduled time
             if (!DateTime.TryParse($"{appointment.AppointmentDate:yyyy-MM-dd} {appointment.TimeSlot}", out DateTime scheduledTime))
                 return BadRequest(new { error = "System error: Could not read appointment time." });
 
             var localTimeNow = DateTime.UtcNow.AddHours(2); // SAST Timezone
 
-            // 3. Make sure they aren't marking it late before it even starts
             if (localTimeNow < scheduledTime)
                 return BadRequest(new { error = "You cannot mark an appointment as late before its scheduled time." });
 
-            // 4. AUTOMATIC MATH: Calculate exactly how many minutes late they are right now
             int minutesLate = (int)(localTimeNow - scheduledTime).TotalMinutes;
 
-            // 5. Apply the Business Rules
             if (minutesLate >= 30)
                 return BadRequest(new { error = $"Customer is {minutesLate} minutes late. Policy requires rescheduling." });
 
@@ -367,7 +366,7 @@ namespace BarberShopBookingSystem.Controllers
 
             if (minutesLate > 15)
             {
-                appointment.TotalPrice += 10; // Add the penalty
+                appointment.TotalPrice += 10;
                 await _context.SaveChangesAsync();
                 return Ok(new { appointment, message = $"Customer marked {minutesLate} mins late. R10 penalty applied." });
             }

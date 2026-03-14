@@ -23,7 +23,7 @@ namespace BarberShopBookingSystem.Services
             _config = config;
         }
 
-        private async Task SendEmail(string type, string to, string subject, object payload)
+        private async Task SendEmail<T>(string type, string to, string subject, T payload)
         {
             var nextJsUrl = _config["NextJs:ApiUrl"]?.TrimEnd('/') + "/api/emails/send";
             var secret = _config["NextJs:InternalSecret"];

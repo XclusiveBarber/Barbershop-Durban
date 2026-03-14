@@ -76,8 +76,7 @@ builder.Services.AddCors(options =>
 // --- EMAIL SERVICE REGISTRATION ---
 // EmailService uses a typed HttpClient to call the Next.js email API route,
 // which renders React Email templates and sends via Resend.
-builder.Services.AddHttpClient<EmailService>();
-builder.Services.AddTransient<IEmailService, EmailService>();
+builder.Services.AddHttpClient<IEmailService, EmailService>();
 // -----------------------------------
 
 var app = builder.Build();

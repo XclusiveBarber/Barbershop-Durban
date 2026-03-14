@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Mail, Lock, User, ChevronRight, AlertCircle, ChevronLeft, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, ChevronRight, AlertCircle, ChevronLeft, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -17,13 +17,18 @@ import {
   signUpWithPassword,
 } from "@/lib/supabase-auth";
 
+// Derive a display name from an email address (part before @)
+function nameFromEmail(email: string) {
+  return email.split("@")[0].replace(/[._-]+/g, " ").trim() || email;
+}
+
 export interface OtpLoginFormProps {
   onComplete: () => void;
   /** Optional callback to go back (used in booking system wizard) */
   onBackAction?: () => void;
 }
 
-type Step = "method" | "otp-email" | "otp-code" | "name";
+type Step = "method" | "otp-email" | "otp-code";
 type PasswordMode = "signin" | "signup";
 
 // ─── Google Icon ───────────────────────────────────────────────────────────────
@@ -58,45 +63,41 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Shared / name step state
-  const [name, setName] = useState("");
+  // Shared state
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null);
-  const [pendingEmail, setPendingEmail] = useState("");
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [profileNeedsUpdate, setProfileNeedsUpdate] = useState(false);
-  const [existingProfileRole, setExistingProfileRole] = useState<AuthUser["role"] | null>(null);
 
   const clearError = () => setError(null);
 
-  // ── After auth: check profile and route to name step or complete ─────────
+  // ── After auth: check profile and complete login ─────────────────────────
   const handlePostAuth = async (
     userId: string,
     email: string,
     token: string | null,
   ) => {
     const profile = await getProfile(userId);
+    const isNew = !profile || !profile.full_name;
+    const displayName = profile?.full_name ?? nameFromEmail(email);
+    const role = (profile?.role as AuthUser["role"]) ?? "customer";
 
-    if (profile?.full_name) {
-      const userData: AuthUser = {
-        id: userId,
-        email,
-        name: profile.full_name,
-        role: (profile.role as AuthUser["role"]) ?? "customer",
-      };
-      login(userData, token ?? undefined);
-      toast.success(`Welcome back, ${userData.name}!`);
-      onComplete();
-    } else {
-      setProfileNeedsUpdate(!!profile);
-      if (profile?.role) setExistingProfileRole(profile.role as AuthUser["role"]);
-      setSupabaseUserId(userId);
-      setPendingEmail(email);
-      if (token) setAccessToken(token);
-      setStep("name");
+    // Silently create/update the profile — swallow RLS errors so login still completes
+    if (isNew) {
+      try {
+        if (profile) {
+          await updateProfile(userId, { name: displayName, email });
+        } else {
+          await createProfile({ id: userId, email, name: displayName, role: "customer" });
+        }
+      } catch {
+        // RLS may block this for some auth methods — proceed anyway
+      }
     }
+
+    const userData: AuthUser = { id: userId, email, name: displayName, role };
+    login(userData, token ?? undefined);
+    toast.success(isNew ? `Welcome, ${displayName}!` : `Welcome back, ${displayName}!`);
+    onComplete();
   };
 
   // ── Google OAuth ───────────────────────────────────────────────────────────
@@ -195,7 +196,6 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
       const authUser = data.user;
       const token = data.session?.access_token ?? null;
       if (!authUser) throw new Error("Verification failed — please try again");
-      if (token) setAccessToken(token);
       await handlePostAuth(authUser.id, authUser.email ?? otpEmail.trim(), token);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Invalid or expired code";
@@ -206,40 +206,6 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
     }
   };
 
-  // ── Save name ──────────────────────────────────────────────────────────────
-  const handleSaveName = async () => {
-    if (!name.trim()) { setError("Please enter your name"); return; }
-    if (!supabaseUserId) { setError("Session error — please try again"); return; }
-    setError(null);
-    setLoading(true);
-    try {
-      if (profileNeedsUpdate) {
-        await updateProfile(supabaseUserId, { name: name.trim(), email: pendingEmail });
-      } else {
-        await createProfile({
-          id: supabaseUserId,
-          email: pendingEmail,
-          name: name.trim(),
-          role: "customer",
-        });
-      }
-      const userData: AuthUser = {
-        id: supabaseUserId,
-        email: pendingEmail,
-        name: name.trim(),
-        role: profileNeedsUpdate ? (existingProfileRole ?? "customer") : "customer",
-      };
-      login(userData, accessToken ?? undefined);
-      toast.success(`Welcome, ${userData.name}!`);
-      onComplete();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create account";
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // ─── Shared UI helpers ──────────────────────────────────────────────────────
 
@@ -300,14 +266,19 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
               <ErrorBox />
 
               {/* Google */}
-              <button
-                onClick={handleGoogleSignIn}
-                disabled={googleLoading || loading}
-                className="w-full flex items-center justify-center gap-3 py-4 border-2 border-black/10 hover:border-black/30 hover:bg-black/[0.02] transition-all text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <GoogleIcon />
-                {googleLoading ? "Redirecting..." : "Continue with Google"}
-              </button>
+              <div className="space-y-1.5">
+                <button
+                  onClick={handleGoogleSignIn}
+                  disabled={googleLoading || loading}
+                  className="w-full flex items-center justify-center gap-3 py-4 border-2 border-black/10 hover:border-black/30 hover:bg-black/[0.02] transition-all text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <GoogleIcon />
+                  {googleLoading ? "Redirecting..." : "Continue with Google"}
+                </button>
+                <p className="text-center text-xs text-black/40">
+                  Don&apos;t have an account? Google sign-in will create one for you.
+                </p>
+              </div>
 
               {/* Divider */}
               <div className="flex items-center gap-4">
@@ -554,54 +525,6 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
                 className="w-full text-xs text-black/40 hover:text-black transition-colors py-2"
               >
                 Wrong email? Go back
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Name step (all flows) ────────────────────────────────────────── */}
-        {step === "name" && (
-          <motion.div
-            key="name"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-6"
-          >
-            <FormHeader
-              title="What's Your Name?"
-              subtitle="One last thing — so we know who to expect."
-            />
-
-            <div className="space-y-4">
-              <ErrorBox />
-
-              <div className="space-y-2">
-                <label className="text-xs uppercase tracking-widest text-black/40 font-medium">
-                  Your Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => { setName(e.target.value); clearError(); }}
-                    placeholder="e.g. Thabo"
-                    className="w-full pl-12 pr-4 py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
-                    onKeyDown={(e) => e.key === "Enter" && !loading && handleSaveName()}
-                    disabled={loading}
-                    autoFocus
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={handleSaveName}
-                disabled={!name.trim() || loading}
-                className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all flex items-center justify-center gap-2"
-              >
-                {loading ? "Creating..." : "Continue"} <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </motion.div>

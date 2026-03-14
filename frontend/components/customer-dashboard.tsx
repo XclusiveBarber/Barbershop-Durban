@@ -40,6 +40,7 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
 
   // Reschedule state
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [isRescheduleWarningOpen, setIsRescheduleWarningOpen] = useState(false);
   const [rescheduleTargetId, setRescheduleTargetId] = useState<number | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
   const [rescheduleTime, setRescheduleTime] = useState<string | null>(null);
@@ -358,9 +359,7 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                             <button
                               onClick={() => {
                                 setRescheduleTargetId(appt.id);
-                                setRescheduleDate(new Date(appt.appointment_date));
-                                setRescheduleTime(appt.time_slot);
-                                setIsRescheduleModalOpen(true);
+                                setIsRescheduleWarningOpen(true);
                               }}
                               className="flex-1 border-2 border-black/10 text-black/60 px-4 py-2 text-xs uppercase tracking-widest hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-2"
                             >
@@ -513,6 +512,49 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
           </div>
         )}
       </div>
+
+      {/* ── Reschedule Policy Warning Modal ────────────────────────────────── */}
+      {isRescheduleWarningOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-white max-w-md w-full p-8 shadow-2xl">
+            <h3 className="text-2xl font-light text-black mb-4">Reschedule Policy</h3>
+
+            <div className="mb-6 space-y-3 text-sm text-black/60">
+              <p>
+                You have <strong className="text-black">1 free reschedule</strong> available for each appointment.
+              </p>
+              <p>
+                Any additional rescheduling will require <strong className="text-black">a new booking with full payment</strong>.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  if (rescheduleTargetId) {
+                    const appt = appointments.find(a => a.id === rescheduleTargetId);
+                    if (appt) {
+                      setRescheduleDate(new Date(appt.appointment_date));
+                      setRescheduleTime(appt.time_slot);
+                    }
+                  }
+                  setIsRescheduleWarningOpen(false);
+                  setIsRescheduleModalOpen(true);
+                }}
+                className="flex-1 bg-accent text-accent-foreground py-3 text-sm uppercase tracking-widest font-semibold hover:opacity-90 transition-all"
+              >
+                Continue
+              </button>
+              <button
+                onClick={() => setIsRescheduleWarningOpen(false)}
+                className="flex-1 border-2 border-black/10 text-black/50 py-3 text-sm uppercase tracking-widest font-semibold hover:border-black/30 hover:text-black transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Reschedule Modal ────────────────────────────────── */}
       {isRescheduleModalOpen && (

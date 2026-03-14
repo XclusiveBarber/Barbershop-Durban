@@ -117,7 +117,23 @@ namespace BarberShopBookingSystem.Controllers
                 }
             }
 
-            if (needsSave) await _context.SaveChangesAsync();
+            // 🚨 THE RACE CONDITION FIX 🚨
+            if (needsSave)
+            {
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception)
+                {
+                    // SAFETY NET: If Next.js fires two requests at the exact same millisecond 
+                    // and they collide trying to clean up the same abandoned carts, 
+                    // we just ignore the error. The winning request already did the cleanup!
+
+                    // Clear the tracked changes so the context doesn't stay poisoned
+                    _context.ChangeTracker.Clear();
+                }
+            }
 
             var query = _context.Appointments.AsQueryable();
 

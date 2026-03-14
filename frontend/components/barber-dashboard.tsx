@@ -15,6 +15,7 @@ interface Appointment {
   appointment_date: string;
   appointment_time: string;
   status: string;
+  is_late: boolean;
   customer_name: string;
   customer_email: string | null;
   barber_name: string;
@@ -52,7 +53,33 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
     }
   };
 
-  const updateStatus = async (id: string, status: 'late' | 'completed' | 'cancelled') => {
+  const handleMarkLate = async (appointmentId: string) => {
+    setUpdating(appointmentId + 'late');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/appointments/${appointmentId}/late-arrival`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to mark late");
+      }
+      if (data.message.includes("penalty")) {
+        toast.warning(data.message);
+      } else {
+        toast.success(data.message);
+      }
+      fetchAppointments();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to mark late");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const updateStatus = async (id: string, status: 'completed' | 'cancelled') => {
     setUpdating(id + status);
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -66,9 +93,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
         toast.success(
           status === 'completed'
             ? 'Appointment completed. Receipt email sent.'
-            : status === 'cancelled'
-            ? 'Appointment cancelled.'
-            : 'Customer marked as late. Notification sent.'
+            : 'Appointment cancelled.'
         );
         fetchAppointments();
       } else {
@@ -115,7 +140,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
   const AppointmentCard = ({ appt }: { appt: Appointment }) => (
     <div
       className={`border-2 p-6 transition-colors ${
-        appt.status === 'late'
+        appt.is_late
           ? 'border-orange-300 bg-orange-50'
           : 'border-black/10 hover:border-accent/30'
       }`}
@@ -123,7 +148,14 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
       <div className="flex justify-between items-start mb-6">
         <div>
           <h3 className="text-lg font-light">{appt.service_name}</h3>
-          <p className="text-xs text-black/40 mt-1">{appt.customer_name}</p>
+          <p className="text-xs text-black/40 mt-1 flex items-center gap-2">
+            {appt.customer_name}
+            {appt.is_late && (
+              <span className="px-1.5 py-0.5 text-[9px] uppercase tracking-widest font-semibold bg-red-100 text-red-600">
+                LATE
+              </span>
+            )}
+          </p>
           {!appt.customer_email && (
             <p className="text-[10px] text-black/30 italic mt-0.5">No email — notification skipped</p>
           )}
@@ -131,7 +163,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
         <span className={`px-3 py-1 text-[10px] uppercase tracking-widest font-medium ${
           appt.status === 'confirmed'
             ? 'bg-accent text-accent-foreground'
-            : appt.status === 'late'
+            : appt.is_late
             ? 'bg-orange-100 text-orange-600'
             : 'bg-black/5 text-black/40'
         }`}>
@@ -153,8 +185,8 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
 
       <div className="flex gap-3 pt-6 border-t border-black/5">
         <button
-          onClick={() => updateStatus(appt.id, 'late')}
-          disabled={!!updating || appt.status === 'late'}
+          onClick={() => handleMarkLate(appt.id)}
+          disabled={!!updating || appt.is_late}
           className="flex-1 border-2 border-orange-200 text-orange-500 px-4 py-2 text-xs uppercase tracking-widest hover:bg-orange-50 hover:border-orange-300 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <AlertCircle className="w-3 h-3" />

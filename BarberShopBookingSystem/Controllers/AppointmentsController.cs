@@ -72,12 +72,23 @@ namespace BarberShopBookingSystem.Controllers
         [HttpGet("all")]
         public async Task<IActionResult> GetAllAppointments([FromQuery] string? date)
         {
+            // 1. 🚨 SECURITY FIX: Identify who is asking for the data
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null) return Unauthorized();
+            var userId = Guid.Parse(userIdClaim);
+
+            var userProfile = await _context.Profiles.FindAsync(userId);
+
+            // Kick out regular customers trying to see the shop calendar
+            if (userProfile == null || (userProfile.Role != "admin" && userProfile.Role != "barber"))
+                return Forbid();
+
             var localTimeNow = DateTime.UtcNow.AddHours(2); // SAST
             var today = DateOnly.FromDateTime(localTimeNow);
 
             bool needsSave = false;
 
-            // --- 🚨 THE NEW 10-MINUTE CART ABANDONMENT FIX 🚨 ---
+            // --- 10-MINUTE CART ABANDONMENT FIX ---
             var expiryTime = localTimeNow.AddMinutes(-10);
             var abandonedBookings = await _context.Appointments
                 .Where(a => a.Status == "pending" && a.PaymentStatus == "unpaid" && a.CreatedAt < expiryTime)
@@ -85,12 +96,11 @@ namespace BarberShopBookingSystem.Controllers
 
             foreach (var abandoned in abandonedBookings)
             {
-                abandoned.Status = "cancelled"; // Release the slot!
+                abandoned.Status = "cancelled";
                 needsSave = true;
             }
-            // ----------------------------------------------------
 
-            // Your existing stale check for 30-minute no-shows
+            // --- 30-MINUTE NO-SHOW FIX ---
             var staleCheck = await _context.Appointments
                 .Where(a => a.Status == "pending" && a.AppointmentDate <= today)
                 .ToListAsync();
@@ -111,6 +121,13 @@ namespace BarberShopBookingSystem.Controllers
 
             var query = _context.Appointments.AsQueryable();
 
+            // 2. 🚨 THE BARBER FIX: If they are a barber, strictly filter the calendar to only their cuts!
+            if (userProfile.Role == "barber")
+            {
+                query = query.Where(a => a.BarberId == userId);
+            }
+
+            // 3. Date Filter
             if (!string.IsNullOrEmpty(date) && DateOnly.TryParse(date, out var targetDate))
             {
                 query = query.Where(a => a.AppointmentDate == targetDate);

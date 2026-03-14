@@ -33,7 +33,6 @@ namespace BarberShopBookingSystem.Controllers
             var apptIds = appointments.Select(a => a.Id).ToList();
             var barberIds = appointments.Where(a => a.BarberId.HasValue).Select(a => a.BarberId.Value).Distinct().ToList();
 
-            // Pull the multi-services from the new junction table
             var apptServices = await _context.AppointmentServices
                 .Where(aps => apptIds.Contains(aps.AppointmentId))
                 .ToListAsync();
@@ -47,7 +46,6 @@ namespace BarberShopBookingSystem.Controllers
 
             var result = appointments.Select(a =>
             {
-                // Grab all services for this specific appointment
                 var serviceIdsForThisAppt = apptServices.Where(aps => aps.AppointmentId == a.Id).Select(aps => aps.HaircutId);
                 var servicesList = serviceIdsForThisAppt.Select(id => haircutMap.TryGetValue(id, out var h) ? h.Name : "Unknown").ToList();
 
@@ -60,7 +58,7 @@ namespace BarberShopBookingSystem.Controllers
                     a.TotalPrice,
                     a.PaymentStatus,
                     a.CreatedAt,
-                    Services = string.Join(", ", servicesList), // e.g. "Haircut, Beard Trim"
+                    Services = string.Join(", ", servicesList),
                     Barbers = a.BarberId.HasValue && barberMap.TryGetValue(a.BarberId.Value, out var b) ? new { b.FullName } : null,
                 };
             });
@@ -72,14 +70,12 @@ namespace BarberShopBookingSystem.Controllers
         [HttpGet("all")]
         public async Task<IActionResult> GetAllAppointments([FromQuery] string? date)
         {
-            // 1. 🚨 SECURITY FIX: Identify who is asking for the data
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userIdClaim == null) return Unauthorized();
             var userId = Guid.Parse(userIdClaim);
 
             var userProfile = await _context.Profiles.FindAsync(userId);
 
-            // Kick out regular customers trying to see the shop calendar
             if (userProfile == null || (userProfile.Role != "admin" && userProfile.Role != "barber"))
                 return Forbid();
 
@@ -88,7 +84,6 @@ namespace BarberShopBookingSystem.Controllers
 
             bool needsSave = false;
 
-            // --- 10-MINUTE CART ABANDONMENT FIX ---
             var expiryTime = localTimeNow.AddMinutes(-10);
             var abandonedBookings = await _context.Appointments
                 .Where(a => a.Status == "pending" && a.PaymentStatus == "unpaid" && a.CreatedAt < expiryTime)
@@ -100,7 +95,6 @@ namespace BarberShopBookingSystem.Controllers
                 needsSave = true;
             }
 
-            // --- 30-MINUTE NO-SHOW FIX ---
             var staleCheck = await _context.Appointments
                 .Where(a => a.Status == "pending" && a.AppointmentDate <= today)
                 .ToListAsync();
@@ -117,7 +111,6 @@ namespace BarberShopBookingSystem.Controllers
                 }
             }
 
-            // 🚨 THE RACE CONDITION FIX 🚨
             if (needsSave)
             {
                 try
@@ -126,20 +119,17 @@ namespace BarberShopBookingSystem.Controllers
                 }
                 catch (Exception)
                 {
-                    // Clear the tracked changes so the context doesn't stay poisoned
                     _context.ChangeTracker.Clear();
                 }
             }
 
             var query = _context.Appointments.AsQueryable();
 
-            // 2. 🚨 THE BARBER FIX: If they are a barber, strictly filter the calendar to only their cuts!
             if (userProfile.Role == "barber")
             {
                 query = query.Where(a => a.BarberId == userId);
             }
 
-            // 3. Date Filter
             if (!string.IsNullOrEmpty(date) && DateOnly.TryParse(date, out var targetDate))
             {
                 query = query.Where(a => a.AppointmentDate == targetDate);
@@ -199,21 +189,17 @@ namespace BarberShopBookingSystem.Controllers
             if (!DateOnly.TryParse(date, out var targetDate))
                 return BadRequest(new { error = "Invalid date format. Use YYYY-MM-DD." });
 
-            // 1. Get the shop capacity (2 active barbers = 2 spots per time slot)
             var totalActiveBarbers = await _context.Barbers.CountAsync(b => b.Available);
             if (totalActiveBarbers == 0)
                 return Ok(new List<string>());
 
-            // 2. Set the hours based on the day of the week!
             var standardSlots = new List<string>();
             if (targetDate.DayOfWeek == DayOfWeek.Sunday)
             {
-                // Sunday: 9:00 AM to 3:00 PM (Last cut starts at 14:00)
                 standardSlots = new List<string> { "09:00", "10:00", "11:00", "12:00", "13:00", "14:00" };
             }
             else
             {
-                // Mon - Sat: 9:00 AM to 7:00 PM (Last cut starts at 18:00)
                 standardSlots = new List<string> { "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00" };
             }
 
@@ -222,23 +208,18 @@ namespace BarberShopBookingSystem.Controllers
                 .ToListAsync();
 
             var availableSlots = new List<string>();
-            var localTimeNow = DateTime.UtcNow.AddHours(2); // SAST
+            var localTimeNow = DateTime.UtcNow.AddHours(2);
             var isToday = targetDate == DateOnly.FromDateTime(localTimeNow);
 
-            // 3. Do the math for every single slot
             foreach (var slot in standardSlots)
             {
-                // Hide past slots if the customer is looking at today's calendar
                 if (isToday && DateTime.TryParse($"{date} {slot}", out DateTime slotTime))
                 {
                     if (slotTime < localTimeNow.AddMinutes(30)) continue;
                 }
 
-                // Check exactly how many cuts are booked for this specific hour
                 var bookingsForThisSlot = bookedAppointments.Count(a => a.TimeSlot == slot);
 
-                // If bookings (e.g. 1) is less than our total barbers (2), the slot stays open!
-                // It ONLY closes when it hits 2/2.
                 if (bookingsForThisSlot < totalActiveBarbers)
                 {
                     availableSlots.Add(slot);
@@ -278,18 +259,17 @@ namespace BarberShopBookingSystem.Controllers
                 return BadRequest(new { error = "Could not read the appointment time format." });
             }
 
-            if (dto.HaircutIds == null || !dto.HaircutIds.Any())
-                return BadRequest(new { error = "You must select at least one service." });
+            // 🚨 THE FIX: Enforce 1 single service per booking
+            if (dto.HaircutId == Guid.Empty)
+                return BadRequest(new { error = "You must select a service." });
 
-            var selectedHaircuts = await _context.Haircuts
-                .Where(h => dto.HaircutIds.Contains(h.Id))
-                .ToListAsync();
+            var selectedHaircut = await _context.Haircuts.FindAsync(dto.HaircutId);
 
-            if (!selectedHaircuts.Any())
-                return NotFound(new { error = "Selected services could not be found." });
+            if (selectedHaircut == null)
+                return NotFound(new { error = "Selected service could not be found." });
 
-            decimal finalPrice = selectedHaircuts.Sum(h => h.Price) - dto.DiscountAmount;
-            int totalDuration = selectedHaircuts.Sum(h => h.DurationMinutes);
+            decimal finalPrice = selectedHaircut.Price - dto.DiscountAmount;
+            int totalDuration = selectedHaircut.DurationMinutes;
 
             var allActiveBarbers = await _context.Barbers.Where(b => b.Available).ToListAsync();
             var targetDate = dto.AppointmentDate;
@@ -331,14 +311,12 @@ namespace BarberShopBookingSystem.Controllers
             _context.Appointments.Add(appointment);
             await _context.SaveChangesAsync();
 
-            foreach (var haircut in selectedHaircuts)
+            // 🚨 THE FIX: Save the single service to the bridge table so we don't break the DB schema
+            _context.AppointmentServices.Add(new AppointmentService
             {
-                _context.AppointmentServices.Add(new AppointmentService
-                {
-                    AppointmentId = appointment.Id,
-                    HaircutId = haircut.Id
-                });
-            }
+                AppointmentId = appointment.Id,
+                HaircutId = selectedHaircut.Id
+            });
 
             await _context.SaveChangesAsync();
 
@@ -548,8 +526,9 @@ namespace BarberShopBookingSystem.Controllers
 
     public class AppointmentCreateDto
     {
-        [JsonPropertyName("haircutIds")]
-        public List<Guid> HaircutIds { get; set; } = new List<Guid>();
+        // 🚨 THE FIX: Reverted to a single HaircutId
+        [JsonPropertyName("haircutId")]
+        public Guid HaircutId { get; set; }
 
         [JsonPropertyName("appointmentDate")]
         public DateOnly AppointmentDate { get; set; }

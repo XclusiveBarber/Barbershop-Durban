@@ -95,8 +95,10 @@ namespace BarberShopBookingSystem.Controllers
             var jsonResponse = await response.Content.ReadAsStringAsync();
             var yocoData = JsonSerializer.Deserialize<JsonElement>(jsonResponse);
 
-            // 5. SECURITY FIX: Check Yoco's official status
-            if (yocoData.GetProperty("status").GetString() == "paid")
+            // 5. SECURITY FIX: Check Yoco's official status (Added "completed" to the VIP list)
+            var yocoStatus = yocoData.GetProperty("status").GetString()?.ToLower();
+
+            if (yocoStatus == "paid" || yocoStatus == "succeeded" || yocoStatus == "successful" || yocoStatus == "completed")
             {
                 // Update the database to reflect the successful payment AND confirm the booking
                 appointment.PaymentStatus = "paid";
@@ -106,12 +108,8 @@ namespace BarberShopBookingSystem.Controllers
                 return Ok(new { message = "Payment verified and successfully recorded.", appointment });
             }
 
-            // If they just typed the URL into their browser but didn't pay:
-            // Grab the exact word Yoco is using
-            var exactStatus = yocoData.GetProperty("status").GetString();
-
-            // Tell the frontend exactly what Yoco said!
-            return BadRequest($"Payment not complete. Yoco says the status is: '{exactStatus}'");
+            // If it's anything else, reject it
+            return BadRequest($"Payment not complete. Yoco says the status is: '{yocoStatus}'");
         }
     }
 

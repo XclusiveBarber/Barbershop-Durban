@@ -191,11 +191,67 @@ namespace BarberShopBookingSystem.Controllers
             return Ok(new { appointments = result });
         }
 
+        // GET /api/appointments/available-slots
+        [HttpGet("available-slots")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAvailableSlots([FromQuery] string date)
+        {
+            if (!DateOnly.TryParse(date, out var targetDate))
+                return BadRequest(new { error = "Invalid date format. Use YYYY-MM-DD." });
+
+            // 1. Get the shop capacity (2 active barbers = 2 spots per time slot)
+            var totalActiveBarbers = await _context.Barbers.CountAsync(b => b.Available);
+            if (totalActiveBarbers == 0)
+                return Ok(new List<string>());
+
+            // 2. Set the hours based on the day of the week!
+            var standardSlots = new List<string>();
+            if (targetDate.DayOfWeek == DayOfWeek.Sunday)
+            {
+                // Sunday: 9:00 AM to 3:00 PM (Last cut starts at 14:00)
+                standardSlots = new List<string> { "09:00", "10:00", "11:00", "12:00", "13:00", "14:00" };
+            }
+            else
+            {
+                // Mon - Sat: 9:00 AM to 7:00 PM (Last cut starts at 18:00)
+                standardSlots = new List<string> { "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00" };
+            }
+
+            var bookedAppointments = await _context.Appointments
+                .Where(a => a.AppointmentDate == targetDate && a.Status != "cancelled")
+                .ToListAsync();
+
+            var availableSlots = new List<string>();
+            var localTimeNow = DateTime.UtcNow.AddHours(2); // SAST
+            var isToday = targetDate == DateOnly.FromDateTime(localTimeNow);
+
+            // 3. Do the math for every single slot
+            foreach (var slot in standardSlots)
+            {
+                // Hide past slots if the customer is looking at today's calendar
+                if (isToday && DateTime.TryParse($"{date} {slot}", out DateTime slotTime))
+                {
+                    if (slotTime < localTimeNow.AddMinutes(30)) continue;
+                }
+
+                // Check exactly how many cuts are booked for this specific hour
+                var bookingsForThisSlot = bookedAppointments.Count(a => a.TimeSlot == slot);
+
+                // If bookings (e.g. 1) is less than our total barbers (2), the slot stays open!
+                // It ONLY closes when it hits 2/2.
+                if (bookingsForThisSlot < totalActiveBarbers)
+                {
+                    availableSlots.Add(slot);
+                }
+            }
+
+            return Ok(availableSlots);
+        }
+
         // POST /api/appointments
         [HttpPost]
         public async Task<IActionResult> CreateAppointment([FromBody] AppointmentCreateDto dto, [FromServices] IEmailService emailService)
         {
-            // 🚨 THE NEW OPTION A FIX: Reject any time that isn't exactly on the hour!
             if (!dto.TimeSlot.EndsWith(":00"))
             {
                 return BadRequest(new { error = "Appointments can only be booked exactly on the hour (e.g., 09:00, 10:00)." });
@@ -286,8 +342,6 @@ namespace BarberShopBookingSystem.Controllers
 
             await _context.SaveChangesAsync();
 
-            // Removed the empty email block here since PaymentsController handles booking confirmation now!
-
             return CreatedAtAction(nameof(GetMyAppointments), new { }, appointment);
         }
 
@@ -317,7 +371,6 @@ namespace BarberShopBookingSystem.Controllers
             appointment.Status = "cancelled";
             await _context.SaveChangesAsync();
 
-            // 🚨 THE FIX: Look up email from the DB instead of the JWT claim for customer cancellations!
             var profile = await _context.Profiles.FindAsync(userId);
             var customerEmail = profile?.Email;
 
@@ -397,7 +450,6 @@ namespace BarberShopBookingSystem.Controllers
 
             await _context.SaveChangesAsync();
 
-            // 🚨 THE FIX: Look up email from the DB instead of the JWT claim for reschedules!
             var profile = await _context.Profiles.FindAsync(appointment.UserId);
             var customerEmail = profile?.Email;
 

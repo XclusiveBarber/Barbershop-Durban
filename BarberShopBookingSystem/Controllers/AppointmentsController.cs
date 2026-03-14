@@ -197,7 +197,7 @@ namespace BarberShopBookingSystem.Controllers
 
         // POST /api/appointments
         [HttpPost]
-        public async Task<IActionResult> CreateAppointment([FromBody] AppointmentCreateDto dto)
+        public async Task<IActionResult> CreateAppointment([FromBody] AppointmentCreateDto dto, [FromServices] IEmailService emailService)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userIdClaim == null) return Unauthorized(new { error = "Unauthorized. Please log in again." });
@@ -290,6 +290,21 @@ namespace BarberShopBookingSystem.Controllers
 
             // 4. SAVE THE BRIDGE RECORDS
             await _context.SaveChangesAsync();
+
+            // 5. SEND BOOKING CONFIRMATION EMAIL
+            var customerProfile = await _context.Profiles.FindAsync(userId);
+            if (customerProfile != null && !string.IsNullOrEmpty(customerProfile.Email))
+            {
+                var serviceNames = string.Join(", ", selectedHaircuts.Select(h => h.Name));
+                await emailService.SendBookingConfirmationEmail(
+                    customerProfile.Email,
+                    appointment.AppointmentDate.ToString("yyyy-MM-dd"),
+                    appointment.TimeSlot,
+                    serviceNames,
+                    assignedBarber.FullName,
+                    $"R{appointment.TotalPrice:F0}"
+                );
+            }
 
             return CreatedAtAction(nameof(GetMyAppointments), new { }, appointment);
         }

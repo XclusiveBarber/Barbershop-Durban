@@ -1,44 +1,76 @@
-﻿using Resend;
+using System.Net.Http.Headers;
+using System.Text.Json;
 
 namespace BarberShopBookingSystem.Services
 {
     public interface IEmailService
     {
         Task SendCancellationEmail(string customerEmail, string date, string time);
+        Task SendBookingConfirmationEmail(string customerEmail, string date, string time, string services, string barberName, string totalPrice);
+        Task SendWelcomeEmail(string customerEmail, string fullName);
     }
 
     public class EmailService : IEmailService
     {
-        private readonly IResend _resend;
+        private readonly HttpClient _httpClient;
+        private readonly IConfiguration _config;
 
-        public EmailService(IResend resend)
+        public EmailService(HttpClient httpClient, IConfiguration config)
         {
-            _resend = resend;
+            _httpClient = httpClient;
+            _config = config;
         }
 
-        public async Task SendCancellationEmail(string customerEmail, string date, string time)
+        private async Task SendEmail(string type, string to, string subject, object payload)
         {
-            var message = new EmailMessage();
+            var nextJsUrl = _config["NextJs:ApiUrl"]?.TrimEnd('/') + "/api/emails/send";
+            var secret = _config["NextJs:InternalSecret"];
 
-            // IMPORTANT: This must be a domain you have verified in your Resend dashboard
-            message.From = "bookings@yourbarbershop.com";
+            var requestBody = new { type, to, subject, payload };
+            var json = JsonSerializer.Serialize(requestBody);
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, nextJsUrl)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+            };
+            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secret);
 
-            message.To.Add(customerEmail);
-            message.Subject = "Appointment Cancellation Update";
+            await _httpClient.SendAsync(requestMessage);
+        }
 
-            // The HTML body of the email
-            message.HtmlBody = $@"
-                <div style='font-family: Arial, sans-serif; color: #333;'>
-                    <h2>Appointment Cancelled</h2>
-                    <p>Hi there,</p>
-                    <p>Unfortunately, your appointment on <strong>{date}</strong> at <strong>{time}</strong> has been cancelled as the barber is no longer available.</p>
-                    <p>We apologize for the inconvenience. Please log in to the app to book a new slot.</p>
-                    <br/>
-                    <p>Best regards,</p>
-                    <p><strong>The Shop</strong></p>
-                </div>";
+        public Task SendCancellationEmail(string customerEmail, string date, string time)
+        {
+            return SendEmail(
+                type: "CANCELLATION",
+                to: customerEmail,
+                subject: "Appointment Cancellation Update",
+                payload: new { date, time }
+            );
+        }
 
-            await _resend.EmailSendAsync(message);
+        public Task SendBookingConfirmationEmail(
+            string customerEmail,
+            string date,
+            string time,
+            string services,
+            string barberName,
+            string totalPrice)
+        {
+            return SendEmail(
+                type: "BOOKING_CONFIRMATION",
+                to: customerEmail,
+                subject: "Booking Confirmed — Xclusive Barber",
+                payload: new { date, time, services, barberName, totalPrice }
+            );
+        }
+
+        public Task SendWelcomeEmail(string customerEmail, string fullName)
+        {
+            return SendEmail(
+                type: "WELCOME",
+                to: customerEmail,
+                subject: "Welcome to Xclusive Barber!",
+                payload: new { fullName }
+            );
         }
     }
 }

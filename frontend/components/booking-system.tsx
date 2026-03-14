@@ -85,29 +85,29 @@ function StepHeader({
 }
 
 function BookingSummaryCard({
-  services,
+  service,
   date,
   time,
 }: {
-  services: Service[];
+  service: Service | null;
   date: Date | undefined;
   time: string | null;
 }) {
-  const totalPrice = services.reduce((acc, s) => acc + Number(s.price), 0);
+  const totalPrice = service ? Number(service.price) : 0;
 
   return (
     <div className="bg-black/[0.03] border-2 border-black/5 p-5 space-y-3 mb-6">
       <p className="text-[10px] uppercase tracking-widest text-black/30 font-medium mb-3">
         Booking Summary
       </p>
-      {services.map(service => (
-        <div key={service.id} className="flex justify-between text-sm">
+      {service && (
+        <div className="flex justify-between text-sm">
           <span className="text-black/50 flex items-center gap-2">
             <Scissors className="w-3.5 h-3.5" /> Service
           </span>
           <span className="font-medium text-black">{service.name}</span>
         </div>
-      ))}
+      )}
       <div className="flex justify-between text-sm">
         <span className="text-black/50 flex items-center gap-2">
           <CalendarIcon className="w-3.5 h-3.5" /> Date
@@ -146,7 +146,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
 
   // Wizard state
   const [step, setStep]               = useState(1);
-  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedBarber, setSelectedBarber]   = useState<Barber | null>(null);
   const [selectedDate, setSelectedDate]       = useState<Date | undefined>(getInitialBookingDate());
   const [selectedTime, setSelectedTime]       = useState<string | null>(null);
@@ -219,7 +219,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
     if (savedBooking && isLoggedIn) {
       try {
         const data = JSON.parse(savedBooking);
-        setSelectedServices(data.services);
+        setSelectedService(data.service);
         setSelectedDate(new Date(data.date));
         setSelectedTime(data.time);
         setStep(3); // Jump straight to the confirm/payment step!
@@ -235,7 +235,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
     if (!isLoggedIn) {
       // Temporarily cache the booking in case OAuth forces a full page redirect
       sessionStorage.setItem("pendingBooking", JSON.stringify({
-        services: selectedServices,
+        service: selectedService,
         date: selectedDate,
         time: selectedTime,
       }));
@@ -287,7 +287,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         method: "POST",
         headers,
         body: JSON.stringify({
-          haircutIds: selectedServices.map(s => s.id),
+          haircutId: selectedService?.id,
           appointmentDate: selectedDate ? format(selectedDate, "yyyy-MM-dd") : "",
           timeSlot: selectedTime,
           customerPhone: phoneState,
@@ -319,7 +319,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: selectedServices.reduce((acc, s) => acc + Number(s.price), 0),
+          amount: selectedService ? Number(selectedService.price) : 0,
           appointmentId,
         }),
       });
@@ -449,17 +449,11 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                     <>
                       <div className="grid gap-3">
                         {services.map((service) => {
-                          const isSelected = selectedServices.some(s => s.id === service.id);
+                          const isSelected = selectedService?.id === service.id;
                           return (
                             <button
                               key={service.id}
-                              onClick={() => {
-                                setSelectedServices(prev => 
-                                  isSelected 
-                                    ? prev.filter(s => s.id !== service.id) 
-                                    : [...prev, service]
-                                );
-                              }}
+                              onClick={() => setSelectedService(service)}
                               className={`flex items-center justify-between p-5 border-2 text-left transition-all hover:border-black group ${
                                 isSelected
                                   ? "border-black bg-black/[0.02]"
@@ -472,8 +466,8 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                               </div>
                               <div className="text-right flex items-center gap-3">
                                 <p className="font-semibold text-base text-black">R{service.price}</p>
-                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-black border-black text-white' : 'border-black/20 text-transparent group-hover:border-black/50'}`}>
-                                  <CheckCircle className={`w-3.5 h-3.5 ${isSelected ? 'opacity-100' : 'opacity-0'}`} />
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'border-black' : 'border-black/20 group-hover:border-black/50'}`}>
+                                  {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-black" />}
                                 </div>
                               </div>
                             </button>
@@ -481,7 +475,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         })}
                       </div>
                       <button
-                        disabled={selectedServices.length === 0}
+                        disabled={!selectedService}
                         onClick={goNext}
                         className="w-full bg-accent text-accent-foreground py-4 mt-8 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:opacity-90 font-medium text-sm uppercase tracking-wide"
                       >
@@ -568,7 +562,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   {isLoggedIn && user ? (
                     <>
                       <StepHeader onBack={goPrev} title="Confirm Booking" />
-                      <BookingSummaryCard services={selectedServices} date={selectedDate} time={selectedTime} />
+                      <BookingSummaryCard service={selectedService} date={selectedDate} time={selectedTime} />
                       <div className="flex items-center gap-3 p-4 border-2 border-black/10 bg-black/[0.02]">
                         <UserCheck className="w-5 h-5 text-black/40 flex-shrink-0" />
                         <div>
@@ -685,7 +679,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   </h3>
 
                   <p className="text-black/55 max-w-sm mx-auto text-sm leading-relaxed">
-                    {`Thanks, ${user?.name ?? ""}. Your ${selectedServices.map(s => s.name).join(" and ")} on ${
+                    {`Thanks, ${user?.name ?? ""}. Your ${selectedService?.name ?? "service"} on ${
                       selectedDate ? format(selectedDate, "EEE, MMM d") : ""
                     } at ${selectedTime} is confirmed. A barber will be assigned to you.`}
                   </p>
@@ -700,7 +694,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                     <button
                       onClick={() => {
                         setStep(1);
-                        setSelectedServices([]);
+                        setSelectedService(null);
                         setSelectedTime(null);
                         setPhoneState("");
                       }}
@@ -738,7 +732,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
               You will be redirected to <strong className="text-black">Yoco</strong>, a secure
               third-party payment provider, to complete your payment of{" "}
               <strong className="text-black">
-                R{selectedServices.reduce((acc, s) => acc + Number(s.price), 0)}
+                R{selectedService ? Number(selectedService.price) : 0}
               </strong>. After a
               successful payment you will be brought back here automatically.
             </p>

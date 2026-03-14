@@ -50,6 +50,19 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
 
   const ALL_TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
 
+  /** Remove time slots that have already passed when selected date is today */
+  const filterFutureSlots = (slots: string[], selectedDate: Date | undefined): string[] => {
+    if (!selectedDate) return slots;
+    const now = new Date();
+    const isToday =
+      selectedDate.getFullYear() === now.getFullYear() &&
+      selectedDate.getMonth() === now.getMonth() &&
+      selectedDate.getDate() === now.getDate();
+    if (!isToday) return slots;
+    const currentHour = now.getHours();
+    return slots.filter((slot) => parseInt(slot.split(":")[0], 10) > currentHour);
+  };
+
   useEffect(() => {
     if (!rescheduleDate) {
       setAvailableRescheduleSlots([]);
@@ -629,8 +642,10 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                     <p className="col-span-2 text-xs text-black/40 py-4">Select a date first</p>
                   ) : loadingRescheduleSlots ? (
                     <p className="col-span-2 text-xs text-black/40 py-4">Loading available times...</p>
+                  ) : filterFutureSlots(ALL_TIME_SLOTS, rescheduleDate).length === 0 ? (
+                    <p className="col-span-2 text-xs text-black/40 py-4">No more slots available today — select another date.</p>
                   ) : (
-                    ALL_TIME_SLOTS.map((time) => {
+                    filterFutureSlots(ALL_TIME_SLOTS, rescheduleDate).map((time) => {
                       const isOpen = availableRescheduleSlots.includes(time);
                       const isSelected = rescheduleTime === time;
                       return (

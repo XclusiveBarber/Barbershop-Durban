@@ -56,6 +56,30 @@ const DEFAULT_TIME_SLOTS = [
   "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
 ];
 
+/** Returns tomorrow if it's already 5pm or later, otherwise today */
+function getInitialBookingDate(): Date {
+  const now = new Date();
+  if (now.getHours() >= 17) {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow;
+  }
+  return now;
+}
+
+/** For a given date, remove any time slots that have already passed (today only) */
+function filterFutureSlots(slots: string[], selectedDate: Date | undefined): string[] {
+  if (!selectedDate) return slots;
+  const now = new Date();
+  const isToday =
+    selectedDate.getFullYear() === now.getFullYear() &&
+    selectedDate.getMonth() === now.getMonth() &&
+    selectedDate.getDate() === now.getDate();
+  if (!isToday) return slots;
+  const currentHour = now.getHours();
+  return slots.filter((slot) => parseInt(slot.split(":")[0], 10) > currentHour);
+}
+
 // ─── More Types ──────────────────────────────────────────────────────────────
 
 // ─── Step-level sub-components ────────────────────────────────────────────────
@@ -149,7 +173,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   const [step, setStep]               = useState(1);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedBarber, setSelectedBarber]   = useState<Barber | null>(null);
-  const [selectedDate, setSelectedDate]       = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate]       = useState<Date | undefined>(getInitialBookingDate());
   const [selectedTime, setSelectedTime]       = useState<string | null>(null);
   const [phoneState, setPhoneState]           = useState<string>("");
 
@@ -496,8 +520,10 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                       <div className="grid grid-cols-2 gap-2">
                         {loadingSlotsData ? (
                           <p className="col-span-2 text-xs text-black/40 py-4">Loading available times...</p>
+                        ) : filterFutureSlots(DEFAULT_TIME_SLOTS, selectedDate).length === 0 ? (
+                          <p className="col-span-2 text-xs text-black/40 py-4">No more slots available today — select another date.</p>
                         ) : (
-                          DEFAULT_TIME_SLOTS.map((time) => {
+                          filterFutureSlots(DEFAULT_TIME_SLOTS, selectedDate).map((time) => {
                             const isOpen = availableSlots.includes(time);
                             const isSelected = selectedTime === time;
                             return (

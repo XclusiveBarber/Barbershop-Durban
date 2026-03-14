@@ -3,21 +3,16 @@
 import React, { useState } from 'react';
 import { Mail } from 'lucide-react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
-import { useRouter } from 'next/navigation';
 
 export function Newsletter() {
   const [loading, setLoading] = useState(false);
   const { user, isLoggedIn, accessToken } = useAuth();
-  const router = useRouter();
 
-  const handleSubscribe = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Check if user is logged in
+  const handleSubscribe = async () => {
     if (!isLoggedIn || !user) {
       toast.error('Please log in to subscribe to our newsletter');
-      router.push('/login');
       return;
     }
 
@@ -62,29 +57,34 @@ export function Newsletter() {
         <p className="text-sm md:text-base text-black/60 mb-6 max-w-xl mx-auto font-poppins">
           Subscribe to our newsletter for exclusive offers, grooming tips, and updates.
         </p>
-        <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-          <input
-            type="email"
-            placeholder="Enter your email"
-            required
-            disabled={loading || !isLoggedIn}
-            suppressHydrationWarning
-            className="flex-1 px-4 py-3 border border-black/20 focus:outline-none focus:ring-2 focus:ring-accent text-sm font-poppins disabled:bg-black/5 disabled:cursor-not-allowed"
-          />
-          <button
-            type="submit"
-            disabled={loading || !isLoggedIn}
-            suppressHydrationWarning
-            className="px-6 py-3 bg-accent text-accent-foreground text-sm font-semibold uppercase tracking-wider hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-montserrat"
-          >
-            {!isLoggedIn ? 'Login to Subscribe' : loading ? 'Subscribing...' : 'Subscribe'}
-          </button>
-        </form>
-        {!isLoggedIn && (
-          <p className="text-xs text-black/40 mt-3 font-poppins">
-            You must be logged in to subscribe to our newsletter.
-          </p>
-        )}
+        <div className="max-w-md mx-auto">
+          {isLoggedIn ? (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-black/60 font-poppins">
+                Subscribe using your account email: <strong>{user?.email}</strong>
+              </p>
+              <button
+                onClick={handleSubscribe}
+                disabled={loading}
+                className="px-6 py-3 bg-accent text-accent-foreground text-sm font-semibold uppercase tracking-wider hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-montserrat"
+              >
+                {loading ? 'Subscribing...' : 'Subscribe Now'}
+              </button>
+            </div>
+          ) : (
+            <div className="text-center">
+              <Link
+                href="/login"
+                className="inline-block px-6 py-3 bg-black text-white text-sm font-semibold uppercase tracking-wider hover:bg-black/80 transition-all font-montserrat"
+              >
+                Login to Subscribe
+              </Link>
+              <p className="text-xs text-black/40 mt-3 font-poppins">
+                You must have an account to stay updated with exclusive offers.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

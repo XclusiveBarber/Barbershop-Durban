@@ -38,6 +38,9 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
   const [savingProfile, setSavingProfile] = useState(false);
   const [emailVerificationSent, setEmailVerificationSent] = useState(false);
 
+  // Cancel confirmation state
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   useEffect(() => {
@@ -252,7 +255,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
           {updating === appt.id + 'completed' ? 'Completing…' : 'Complete'}
         </button>
         <button
-          onClick={() => updateStatus(appt.id, 'cancelled')}
+          onClick={() => setCancelConfirmId(appt.id)}
           disabled={!!updating || appt.status === 'cancelled'}
           className="flex-1 border-2 border-red-200 text-red-500 px-4 py-2 text-xs uppercase tracking-widest hover:bg-red-50 hover:border-red-300 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -524,6 +527,41 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
         )}
 
       </div>
+
+      {/* ── Cancel Confirmation Modal ────────────────────────────────── */}
+      {cancelConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-white max-w-md w-full p-8 shadow-2xl">
+            <h3 className="text-2xl font-light text-black mb-4">Cancel Appointment?</h3>
+
+            <div className="mb-6 text-sm text-black/60">
+              <p>
+                Are you sure you want to cancel this appointment? This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  updateStatus(cancelConfirmId, 'cancelled');
+                  setCancelConfirmId(null);
+                }}
+                disabled={!!updating}
+                className="flex-1 border-2 border-red-200 bg-red-50 text-red-600 py-3 text-sm uppercase tracking-widest font-semibold hover:bg-red-100 hover:border-red-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Cancel Appointment
+              </button>
+              <button
+                onClick={() => setCancelConfirmId(null)}
+                disabled={!!updating}
+                className="flex-1 bg-black text-white py-3 text-sm uppercase tracking-widest font-semibold hover:bg-black/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Keep It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

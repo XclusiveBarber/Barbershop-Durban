@@ -51,11 +51,9 @@ interface Barber {
   image_url?: string;
 }
 
-// Default time slots (static fallback)
+// Default time slots (static fallback) — 1-hour blocks only
 const DEFAULT_TIME_SLOTS = [
-  "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
-  "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
-  "17:00", "17:30",
+  "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
 ];
 
 // ─── More Types ──────────────────────────────────────────────────────────────
@@ -163,6 +161,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   const [services, setServices] = useState<Service[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loadingSlotsData, setLoadingSlotsData] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
   // Wizard state
@@ -213,6 +212,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
     }
 
     const fetchSlots = async () => {
+      setLoadingSlotsData(true);
       try {
         const dateStr = format(selectedDate, "yyyy-MM-dd");
         const res = await fetch(`/api/availability?date=${dateStr}`);
@@ -222,6 +222,8 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
       } catch (error) {
         console.error("Failed to fetch availability:", error);
         setAvailableSlots(DEFAULT_TIME_SLOTS);
+      } finally {
+        setLoadingSlotsData(false);
       }
     };
 
@@ -417,11 +419,6 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                               <div>
                                 <p className="font-medium text-base text-black">{service.name}</p>
                                 <p className="text-xs text-black/40 mt-0.5">{service.description || "Haircut service"}</p>
-                                {service.duration_minutes && (
-                                  <p className="text-xs text-black/30 mt-0.5 flex items-center gap-1">
-                                    <Clock className="w-3 h-3" /> {service.duration_minutes} min
-                                  </p>
-                                )}
                               </div>
                               <div className="text-right flex items-center gap-3">
                                 <p className="font-semibold text-base text-black">R{service.price}</p>
@@ -472,22 +469,29 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         <Clock className="w-4 h-4" /> Available Times
                       </p>
                       <div className="grid grid-cols-2 gap-2">
-                        {availableSlots.length === 0 ? (
+                        {loadingSlotsData ? (
                           <p className="col-span-2 text-xs text-black/40 py-4">Loading available times...</p>
                         ) : (
-                          availableSlots.map((time) => (
-                            <button
-                              key={time}
-                              onClick={() => setSelectedTime(time)}
-                              className={`p-3 text-sm border-2 transition-all ${
-                                selectedTime === time
-                                  ? "bg-black text-white border-black"
-                                  : "border-black/10 hover:border-black text-black"
-                              }`}
-                            >
-                              {time}
-                            </button>
-                          ))
+                          DEFAULT_TIME_SLOTS.map((time) => {
+                            const isOpen = availableSlots.includes(time);
+                            const isSelected = selectedTime === time;
+                            return (
+                              <button
+                                key={time}
+                                onClick={() => isOpen && setSelectedTime(time)}
+                                disabled={!isOpen}
+                                className={`p-3 text-sm border-2 transition-all ${
+                                  isSelected
+                                    ? "bg-black text-white border-black"
+                                    : isOpen
+                                    ? "border-black/10 hover:border-black text-black"
+                                    : "border-black/5 text-black/20 bg-black/[0.02] cursor-not-allowed line-through"
+                                }`}
+                              >
+                                {time}
+                              </button>
+                            );
+                          })
                         )}
                       </div>
                       <button

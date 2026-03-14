@@ -51,6 +51,7 @@ namespace BarberShopBookingSystem.Controllers
             existing.Price = haircut.Price;
             existing.Description = haircut.Description;
             existing.ImageUrl = haircut.ImageUrl;
+            existing.DurationMinutes = haircut.DurationMinutes;
             await _context.SaveChangesAsync();
             return NoContent();
         }

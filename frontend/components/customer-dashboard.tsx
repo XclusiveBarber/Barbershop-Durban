@@ -45,7 +45,10 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
   const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
   const [rescheduleTime, setRescheduleTime] = useState<string | null>(null);
   const [availableRescheduleSlots, setAvailableRescheduleSlots] = useState<string[]>([]);
+  const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
   const [isRescheduling, setIsRescheduling] = useState(false);
+
+  const ALL_TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
 
   useEffect(() => {
     if (!rescheduleDate) {
@@ -53,17 +56,16 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
       return;
     }
     const fetchSlots = async () => {
+      setLoadingRescheduleSlots(true);
       try {
         const dateStr = format(rescheduleDate, "yyyy-MM-dd");
         const res = await fetch(`/api/availability?date=${dateStr}`);
         const data = await res.json();
-        setAvailableRescheduleSlots(data.available_slots || [
-          "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
-          "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
-          "17:00", "17:30"
-        ]);
+        setAvailableRescheduleSlots(data.available_slots || ALL_TIME_SLOTS);
       } catch (error) {
         setAvailableRescheduleSlots([]);
+      } finally {
+        setLoadingRescheduleSlots(false);
       }
     };
     fetchSlots();
@@ -554,58 +556,24 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
       {/* ── Reschedule Modal ────────────────────────────────── */}
       {isRescheduleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-white w-full max-w-md p-8 shadow-2xl overflow-y-auto max-h-[95vh]">
+          <div className="bg-white w-full max-w-3xl p-8 shadow-2xl overflow-y-auto max-h-[95vh]">
             <div className="flex justify-between items-center mb-8">
               <h3 className="text-2xl font-light text-black">Reschedule Appointment</h3>
-              <button onClick={() => setIsRescheduleModalOpen(false)} className="text-black/50 hover:text-black border-2 border-transparent hover:border-black/10 p-2 rounded transition-all">
+              <button onClick={() => setIsRescheduleModalOpen(false)} className="text-black/50 hover:text-black border-2 border-transparent hover:border-black/10 p-2 transition-all">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="space-y-8">
+            {/* Side-by-side: calendar left, slots right — mirrors booking Step 2 */}
+            <div className="grid md:grid-cols-2 gap-10">
               {/* Calendar */}
-              <div className="border-2 border-black/10 p-4 bg-white">
-                <style>{`
-                  .rdp {
-                    --rdp-cell-size: 45px;
-                    --rdp-accent-color: #000000;
-                    --rdp-background-color: #f3f3f3;
-                    margin: 0;
-                    width: 100%;
-                  }
-                  .rdp-day[aria-selected="true"],
-                  .rdp-day_selected,
-                  .rdp-cell_selected .rdp-day {
-                    background-color: var(--rdp-accent-color) !important;
-                    color: white !important;
-                    font-weight: 600;
-                  }
-                  .rdp-day[aria-selected="true"]:focus-visible,
-                  .rdp-day[aria-selected="true"]:hover,
-                  .rdp-day_selected:focus-visible,
-                  .rdp-day_selected:hover {
-                    background-color: var(--rdp-accent-color) !important;
-                    color: white !important;
-                  }
-                  .rdp-head_cell {
-                    font-size: 11px;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    color: #000000;
-                  }
-                  .rdp-cell {
-                    padding: 2px;
-                  }
-                  .rdp-day {
-                    border-radius: 4px;
-                  }
-                `}</style>
+              <div className="flex justify-center border border-black/10 p-4">
                 <DayPicker
                   mode="single"
                   selected={rescheduleDate}
-                  onSelect={setRescheduleDate}
+                  onSelect={(date) => { setRescheduleDate(date); setRescheduleTime(null); }}
                   disabled={{ before: new Date() }}
-                  className="flex justify-center"
+                  className="p-0 m-0"
                 />
               </div>
 
@@ -614,53 +582,51 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                 <p className="text-xs font-medium uppercase tracking-widest text-black/40 flex items-center gap-2">
                   <Clock className="w-4 h-4" /> Available Times
                 </p>
-                {!rescheduleDate && (
-                  <p className="text-xs text-black/40 py-4 text-center bg-black/5 p-3">Select a date to see available times</p>
-                )}
-                {rescheduleDate && availableRescheduleSlots.length === 0 && (
-                  <p className="text-xs text-black/40 py-4 text-center bg-black/5 p-3">No available times for this date</p>
-                )}
-                <div className="grid grid-cols-3 gap-2">
-                  {availableRescheduleSlots.map((time) => (
-                    <button
-                      key={time}
-                      onClick={() => setRescheduleTime(time)}
-                      className={`p-3 text-xs font-medium border-2 transition-all rounded ${
-                        rescheduleTime === time
-                          ? "bg-black text-white border-black"
-                          : "border-black/10 hover:border-black text-black hover:bg-black/5"
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 gap-2">
+                  {!rescheduleDate ? (
+                    <p className="col-span-2 text-xs text-black/40 py-4">Select a date first</p>
+                  ) : loadingRescheduleSlots ? (
+                    <p className="col-span-2 text-xs text-black/40 py-4">Loading available times...</p>
+                  ) : (
+                    ALL_TIME_SLOTS.map((time) => {
+                      const isOpen = availableRescheduleSlots.includes(time);
+                      const isSelected = rescheduleTime === time;
+                      return (
+                        <button
+                          key={time}
+                          onClick={() => isOpen && setRescheduleTime(time)}
+                          disabled={!isOpen}
+                          className={`p-3 text-sm border-2 transition-all ${
+                            isSelected
+                              ? "bg-black text-white border-black"
+                              : isOpen
+                              ? "border-black/10 hover:border-black text-black"
+                              : "border-black/5 text-black/20 bg-black/[0.02] cursor-not-allowed line-through"
+                          }`}
+                        >
+                          {time}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    disabled={!rescheduleDate || !rescheduleTime || isRescheduling}
+                    onClick={handleReschedule}
+                    className="flex-1 bg-accent text-accent-foreground py-4 text-sm uppercase tracking-wide font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    {isRescheduling ? "Saving..." : "Save New Time"}
+                  </button>
+                  <button
+                    onClick={() => setIsRescheduleModalOpen(false)}
+                    className="flex-1 border-2 border-black/10 text-black/50 py-4 text-sm uppercase tracking-wide font-medium hover:border-black/30 hover:text-black transition-all"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
-
-              {/* Selected info */}
-              {rescheduleDate && rescheduleTime && (
-                <div className="border-2 border-accent/30 bg-accent/5 p-4 text-sm">
-                  <p className="text-black/60">
-                    <strong>New time:</strong> {format(rescheduleDate, 'EEEE, MMMM d, yyyy')} at {rescheduleTime}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-8 flex gap-3">
-              <button
-                disabled={!rescheduleDate || !rescheduleTime || isRescheduling}
-                onClick={handleReschedule}
-                className="flex-1 bg-accent text-accent-foreground py-4 text-sm uppercase tracking-widest font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
-                {isRescheduling ? "Saving..." : "Save New Time"}
-              </button>
-              <button
-                onClick={() => setIsRescheduleModalOpen(false)}
-                className="flex-1 border-2 border-black/10 text-black/50 py-4 text-sm uppercase tracking-widest font-semibold hover:border-black/30 hover:text-black transition-all"
-              >
-                Cancel
-              </button>
             </div>
 
           </div>

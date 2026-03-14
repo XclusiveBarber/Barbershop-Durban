@@ -240,10 +240,44 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   const [isRedirectingToPayment, setIsRedirectingToPayment] = useState(false);
   const [showPaymentWarning, setShowPaymentWarning] = useState(false);
 
+  // 10-minute slot-hold countdown (starts when user reaches Step 3 logged in)
+  const CHECKOUT_TIMEOUT_SECS = 10 * 60;
+  const [checkoutSecsLeft, setCheckoutSecsLeft] = useState(CHECKOUT_TIMEOUT_SECS);
+  const [checkoutExpired, setCheckoutExpired] = useState(false);
+
+  useEffect(() => {
+    if (step !== 3 || !isLoggedIn) {
+      setCheckoutSecsLeft(CHECKOUT_TIMEOUT_SECS);
+      setCheckoutExpired(false);
+      return;
+    }
+    // Reset and start countdown each time the user arrives at step 3
+    setCheckoutSecsLeft(CHECKOUT_TIMEOUT_SECS);
+    setCheckoutExpired(false);
+    const timer = setInterval(() => {
+      setCheckoutSecsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setCheckoutExpired(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [step, isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fmtCountdown = (secs: number) =>
+    `${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`;
+
   /** Show the external-redirect warning modal before initiating payment */
   const handleConfirm = () => {
     if (!isLoggedIn || !user) {
       toast.error("You must be logged in to confirm your booking.");
+      return;
+    }
+    if (checkoutExpired) {
+      toast.error("Time expired. Please select your slot again.");
       return;
     }
     setShowPaymentWarning(true);
@@ -271,6 +305,12 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
       });
 
       if (!response.ok) {
+        // 409 Conflict = database unique constraint triggered — slot just taken
+        if (response.status === 409) {
+          toast.error("Sorry, this slot was just taken! Please pick another.");
+          setIsRedirectingToPayment(false);
+          return;
+        }
         let errorMessage = "Failed to create appointment";
         try {
           const text = await response.text();
@@ -567,9 +607,28 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                         </p>
                       </div>
 
+                      {/* ── 10-Minute Slot Countdown ───────────────────── */}
+                      {checkoutExpired ? (
+                        <div className="p-4 border-2 border-red-200 bg-red-50 text-center">
+                          <p className="text-sm font-semibold text-red-700">
+                            Time expired. Please select your slot again.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-2 text-sm text-black/50">
+                          <Clock className="w-4 h-4" />
+                          <span>
+                            Slot reserved for{" "}
+                            <strong className={`font-mono ${checkoutSecsLeft <= 60 ? "text-red-600" : "text-black"}`}>
+                              {fmtCountdown(checkoutSecsLeft)}
+                            </strong>
+                          </span>
+                        </div>
+                      )}
+
                       <button
                         onClick={handleConfirm}
-                        disabled={isRedirectingToPayment}
+                        disabled={isRedirectingToPayment || checkoutExpired}
                         className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {isRedirectingToPayment ? (

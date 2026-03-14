@@ -228,11 +228,12 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         const dateStr = format(selectedDate, "yyyy-MM-dd");
         const res = await fetch(`/api/availability?date=${dateStr}`);
         const data = await res.json();
-        // C# returns { available_slots: [...] } — slots that still have a free barber
-        setAvailableSlots(data.available_slots || getSlotsForDate(selectedDate));
+        // C# returns { available_slots: [...] } — only slots with a free barber
+        // Default to [] on bad/missing data — never assume all slots are free
+        setAvailableSlots(Array.isArray(data.available_slots) ? data.available_slots : []);
       } catch (error) {
         console.error("Failed to fetch availability:", error);
-        setAvailableSlots(getSlotsForDate(selectedDate));
+        setAvailableSlots([]);
       } finally {
         setLoadingSlotsData(false);
       }

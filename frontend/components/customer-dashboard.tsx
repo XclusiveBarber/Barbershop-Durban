@@ -77,7 +77,7 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
         const dateStr = format(rescheduleDate, "yyyy-MM-dd");
         const res = await fetch(`/api/availability?date=${dateStr}`);
         const data = await res.json();
-        setAvailableRescheduleSlots(data.available_slots || getSlotsForDate(rescheduleDate));
+        setAvailableRescheduleSlots(Array.isArray(data.available_slots) ? data.available_slots : []);
       } catch (error) {
         setAvailableRescheduleSlots([]);
       } finally {

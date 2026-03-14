@@ -212,7 +212,7 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
     setLoading(true);
     try {
       if (profileNeedsUpdate) {
-        await updateProfile(supabaseUserId, { name: name.trim() });
+        await updateProfile(supabaseUserId, { name: name.trim(), email: pendingEmail });
       } else {
         await createProfile({
           id: supabaseUserId,

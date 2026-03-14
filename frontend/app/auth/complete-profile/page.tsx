@@ -59,8 +59,8 @@ function CompleteProfileContent() {
       const profile = await getProfile(authUser.id);
 
       if (profile) {
-        // Profile row was auto-created by Supabase trigger — just update the name
-        await updateProfile(authUser.id, { name: name.trim() });
+        // Profile row was auto-created by Supabase trigger — update name and ensure email is saved
+        await updateProfile(authUser.id, { name: name.trim(), email: authUser.email ?? "" });
       } else {
         await createProfile({
           id: authUser.id,

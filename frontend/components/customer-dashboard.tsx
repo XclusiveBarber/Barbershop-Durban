@@ -48,7 +48,10 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
   const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
   const [isRescheduling, setIsRescheduling] = useState(false);
 
-  const ALL_TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
+  const getSlotsForDate = (date: Date): string[] =>
+    date.getDay() === 0
+      ? ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00"]
+      : ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
 
   /** Remove time slots that have already passed when selected date is today */
   const filterFutureSlots = (slots: string[], selectedDate: Date | undefined): string[] => {
@@ -74,7 +77,7 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
         const dateStr = format(rescheduleDate, "yyyy-MM-dd");
         const res = await fetch(`/api/availability?date=${dateStr}`);
         const data = await res.json();
-        setAvailableRescheduleSlots(data.available_slots || ALL_TIME_SLOTS);
+        setAvailableRescheduleSlots(Array.isArray(data.available_slots) ? data.available_slots : []);
       } catch (error) {
         setAvailableRescheduleSlots([]);
       } finally {
@@ -219,16 +222,44 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
     <div className="min-h-screen bg-white text-black">
       <style>{`
         .rdp {
-          --rdp-cell-size: 40px;
+          --rdp-cell-size: 45px;
           --rdp-accent-color: #000000;
           --rdp-background-color: #f3f3f3;
           margin: 0;
+          width: 100%;
+        }
+        .rdp-caption {
+          padding: 0.5rem 0 1.5rem;
+          font-size: 1.1rem;
+          font-weight: 600;
+        }
+        .rdp-head_cell {
+          font-size: 0.9rem;
+          font-weight: 600;
+          padding: 0.5rem 0;
+        }
+        .rdp-cell {
+          width: 100%;
+        }
+        .rdp-day {
+          font-size: 0.95rem;
+          border-radius: 4px;
+          transition: all 0.2s ease;
+        }
+        .rdp-day:hover:not(.rdp-day_disabled) {
+          background-color: var(--rdp-background-color);
+          cursor: pointer;
         }
         .rdp-day_selected,
         .rdp-day_selected:focus-visible,
         .rdp-day_selected:hover {
           background-color: var(--rdp-accent-color) !important;
           color: white !important;
+          font-weight: 600;
+        }
+        .rdp-day_disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
         }
       `}</style>
 
@@ -578,48 +609,6 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
             </div>
 
             {/* Side-by-side: calendar left, slots right — mirrors booking Step 2 */}
-            <style>{`
-              .rdp {
-                --rdp-cell-size: 45px;
-                --rdp-accent-color: #000000;
-                --rdp-background-color: #f3f3f3;
-                margin: 0;
-                width: 100%;
-              }
-              .rdp-caption {
-                padding: 0.5rem 0 1.5rem;
-                font-size: 1.1rem;
-                font-weight: 600;
-              }
-              .rdp-head_cell {
-                font-size: 0.9rem;
-                font-weight: 600;
-                padding: 0.5rem 0;
-              }
-              .rdp-cell {
-                width: 100%;
-              }
-              .rdp-day {
-                font-size: 0.95rem;
-                border-radius: 4px;
-                transition: all 0.2s ease;
-              }
-              .rdp-day:hover:not(.rdp-day_disabled) {
-                background-color: var(--rdp-background-color);
-                cursor: pointer;
-              }
-              .rdp-day_selected,
-              .rdp-day_selected:focus-visible,
-              .rdp-day_selected:hover {
-                background-color: var(--rdp-accent-color) !important;
-                color: white !important;
-                font-weight: 600;
-              }
-              .rdp-day_disabled {
-                opacity: 0.4;
-                cursor: not-allowed;
-              }
-            `}</style>
             <div className="grid md:grid-cols-2 gap-10">
               {/* Calendar */}
               <div className="flex justify-center border border-black/10 p-8 bg-black/[0.01]">
@@ -642,10 +631,10 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                     <p className="col-span-2 text-xs text-black/40 py-4">Select a date first</p>
                   ) : loadingRescheduleSlots ? (
                     <p className="col-span-2 text-xs text-black/40 py-4">Loading available times...</p>
-                  ) : filterFutureSlots(ALL_TIME_SLOTS, rescheduleDate).length === 0 ? (
+                  ) : filterFutureSlots(getSlotsForDate(rescheduleDate ?? new Date()), rescheduleDate).length === 0 ? (
                     <p className="col-span-2 text-xs text-black/40 py-4">No more slots available today — select another date.</p>
                   ) : (
-                    filterFutureSlots(ALL_TIME_SLOTS, rescheduleDate).map((time) => {
+                    filterFutureSlots(getSlotsForDate(rescheduleDate ?? new Date()), rescheduleDate).map((time) => {
                       const isOpen = availableRescheduleSlots.includes(time);
                       const isSelected = rescheduleTime === time;
                       return (

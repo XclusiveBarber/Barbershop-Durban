@@ -51,20 +51,14 @@ interface Barber {
   image_url?: string;
 }
 
-// Default time slots (static fallback) — 1-hour blocks only
-const DEFAULT_TIME_SLOTS = [
-  "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
-];
-
-/** Returns tomorrow if it's already 5pm or later, otherwise today */
-function getInitialBookingDate(): Date {
-  const now = new Date();
-  if (now.getHours() >= 17) {
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow;
-  }
-  return now;
+/** Returns the correct time slots based on day of week.
+ *  Mon–Sat: 09:00–18:00 (shop open until 19:00)
+ *  Sunday:  09:00–14:00 (shop open until 15:00)
+ */
+function getSlotsForDate(date: Date): string[] {
+  return date.getDay() === 0
+    ? ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00"]
+    : ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
 }
 
 /** For a given date, remove any time slots that have already passed (today only) */
@@ -78,6 +72,18 @@ function filterFutureSlots(slots: string[], selectedDate: Date | undefined): str
   if (!isToday) return slots;
   const currentHour = now.getHours();
   return slots.filter((slot) => parseInt(slot.split(":")[0], 10) > currentHour);
+}
+
+/** Auto-advance to tomorrow if there are no future slots left today */
+function getInitialBookingDate(): Date {
+  const now = new Date();
+  const todaySlots = getSlotsForDate(now);
+  if (filterFutureSlots(todaySlots, now).length === 0) {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow;
+  }
+  return now;
 }
 
 // ─── More Types ──────────────────────────────────────────────────────────────
@@ -222,11 +228,12 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         const dateStr = format(selectedDate, "yyyy-MM-dd");
         const res = await fetch(`/api/availability?date=${dateStr}`);
         const data = await res.json();
-        // C# returns { available_slots: [...] } — slots that still have a free barber
-        setAvailableSlots(data.available_slots || DEFAULT_TIME_SLOTS);
+        // C# returns { available_slots: [...] } — only slots with a free barber
+        // Default to [] on bad/missing data — never assume all slots are free
+        setAvailableSlots(Array.isArray(data.available_slots) ? data.available_slots : []);
       } catch (error) {
         console.error("Failed to fetch availability:", error);
-        setAvailableSlots(DEFAULT_TIME_SLOTS);
+        setAvailableSlots([]);
       } finally {
         setLoadingSlotsData(false);
       }
@@ -520,10 +527,10 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                       <div className="grid grid-cols-2 gap-2">
                         {loadingSlotsData ? (
                           <p className="col-span-2 text-xs text-black/40 py-4">Loading available times...</p>
-                        ) : filterFutureSlots(DEFAULT_TIME_SLOTS, selectedDate).length === 0 ? (
+                        ) : filterFutureSlots(getSlotsForDate(selectedDate ?? new Date()), selectedDate).length === 0 ? (
                           <p className="col-span-2 text-xs text-black/40 py-4">No more slots available today — select another date.</p>
                         ) : (
-                          filterFutureSlots(DEFAULT_TIME_SLOTS, selectedDate).map((time) => {
+                          filterFutureSlots(getSlotsForDate(selectedDate ?? new Date()), selectedDate).map((time) => {
                             const isOpen = availableSlots.includes(time);
                             const isSelected = selectedTime === time;
                             return (

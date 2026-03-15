@@ -8,7 +8,7 @@ import { DayPicker } from 'react-day-picker';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useAuth, type AuthUser } from '@/context/auth-context';
-import { updateProfile, updateUserEmail } from '@/lib/supabase-auth';
+import { updateProfile } from '@/lib/supabase-auth';
 
 // Shape returned by GET /api/appointments/my-appointments
 interface AppointmentRow {
@@ -34,9 +34,7 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
 
   // Profile edit state
   const [editName, setEditName] = useState(user.name || '');
-  const [editEmail, setEditEmail] = useState(user.email || '');
   const [savingProfile, setSavingProfile] = useState(false);
-  const [emailVerificationSent, setEmailVerificationSent] = useState(false);
 
   // Reschedule state
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
@@ -90,8 +88,15 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
             throw new Error(errorText || "Failed to reschedule");
         }
         
-        toast.success("Appointment successfully rescheduled!");
+        toast.success("Appointment rescheduled!");
         setIsRescheduleModalOpen(false);
+        // Optimistically update the local state immediately
+        setAppointments(prev => prev.map(a =>
+          a.id === rescheduleTargetId
+            ? { ...a, appointment_date: format(rescheduleDate, 'yyyy-MM-dd'), time_slot: rescheduleTime! }
+            : a
+        ));
+        // Then silently sync with server
         fetchAppointments();
         
     } catch (error: any) {
@@ -145,47 +150,15 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
 
   const handleSaveProfile = async () => {
     const trimmedName = editName.trim();
-    const trimmedEmail = editEmail.trim();
-
     if (!trimmedName) {
       toast.error('Name cannot be empty');
       return;
     }
-
-    if (!trimmedEmail) {
-      toast.error('Email cannot be empty');
-      return;
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmedEmail)) {
-      toast.error('Please enter a valid email address');
-      return;
-    }
-
     setSavingProfile(true);
     try {
-      const updates: any = { name: trimmedName };
-
-      // Update email in Supabase Auth if it changed
-      if (trimmedEmail !== user.email) {
-        try {
-          await updateUserEmail(trimmedEmail);
-          updates.email = trimmedEmail;
-          setEmailVerificationSent(true);
-          toast.success('Email updated! A verification link has been sent to your new email address.');
-        } catch (emailError: any) {
-          toast.error(emailError.message || 'Failed to update email');
-          setSavingProfile(false);
-          return;
-        }
-      }
-
-      // Update profile with name and email in profiles table
-      await updateProfile(user.id, updates);
+      await updateProfile(user.id, { name: trimmedName });
       updateUser({ name: trimmedName });
-      toast.success('Profile updated successfully');
+      toast.success('Profile updated');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update profile');
     } finally {
@@ -480,36 +453,12 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                   </div>
                 </div>
 
-                {/* Email — editable */}
+                {/* Email — read-only */}
                 <div className="p-6">
                   <label className="text-[10px] uppercase tracking-widest text-black/40 font-medium block mb-3">
                     Email Address
                   </label>
-                  <div className="flex flex-col md:flex-row gap-3">
-                    <input
-                      type="email"
-                      value={editEmail}
-                      onChange={(e) => setEditEmail(e.target.value)}
-                      placeholder="your@email.com"
-                      className="w-full md:flex-1 border-2 border-black/10 px-4 py-2.5 text-sm focus:outline-none focus:border-black transition-colors bg-white"
-                    />
-                    <button
-                      onClick={handleSaveProfile}
-                      disabled={savingProfile || (editEmail.trim() === user.email && editName.trim() === user.name)}
-                      className="w-full md:w-auto px-5 py-2.5 bg-accent text-accent-foreground text-xs uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center md:justify-start gap-2 whitespace-nowrap"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      {savingProfile ? 'Saving…' : 'Save'}
-                    </button>
-                  </div>
-                  {emailVerificationSent && (
-                    <p className="text-[11px] text-accent mt-2">
-                      ✓ Verification email sent. Check your inbox to confirm the change.
-                    </p>
-                  )}
-                  <p className="text-[11px] text-black/30 mt-2">
-                    Changing your email will require verification via a link sent to your new email address.
-                  </p>
+                  <p className="text-sm text-black/70">{user.email}</p>
                 </div>
 
                 {/* Role */}

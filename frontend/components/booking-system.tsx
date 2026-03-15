@@ -248,12 +248,19 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
   const [isRedirectingToPayment, setIsRedirectingToPayment] = useState(false);
   const [showPaymentWarning, setShowPaymentWarning] = useState(false);
 
-  /** Validate phone number - accepts 10 digits or +27 format */
+  /** Validate phone number - accepts 9 digits (local without 0), 10 digits (with leading 0), or +27 format */
   const isValidPhoneNumber = (phone: string): boolean => {
-    const cleanPhone = phone.replace(/\s/g, "");
-    // Match 10 digits or +27 followed by 9 digits
-    const phoneRegex = /^(?:\d{10}|\+27\d{9})$/;
-    return phoneRegex.test(cleanPhone);
+    const clean = phone.replace(/[\s\-]/g, "");
+    return /^(\d{9}|\d{10}|\+27\d{9})$/.test(clean);
+  };
+
+  /** Normalise to +27 international format before sending to the API */
+  const normalizePhone = (p: string): string => {
+    const c = p.replace(/[\s\-]/g, "");
+    if (c.startsWith("+27")) return c;
+    if (c.startsWith("0") && c.length === 10) return "+27" + c.slice(1);
+    if (c.length === 9) return "+27" + c;
+    return c;
   };
 
   /** Show the external-redirect warning modal before initiating payment */
@@ -290,7 +297,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
           haircutId: selectedService?.id,
           appointmentDate: selectedDate ? format(selectedDate, "yyyy-MM-dd") : "",
           timeSlot: selectedTime,
-          customerPhone: phoneState,
+          customerPhone: normalizePhone(phoneState),
         }),
       });
 
@@ -603,34 +610,37 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                       </div>
 
                       {/* ── Phone Number ──────────────────────────────── */}
-                      <div className={`border-2 p-5 transition-colors ${
-                        phoneState && !isValidPhoneNumber(phoneState)
-                          ? "border-red-300 bg-red-50/40"
-                          : "border-black/10"
-                      }`}>
-                        <label className="text-[10px] uppercase tracking-widest text-black/40 font-medium block mb-3">
-                          Phone Number (For Updates)
+                      <div className="space-y-2">
+                        <label className="text-[10px] uppercase tracking-widest text-black/40 font-medium block">
+                          Phone Number <span className="normal-case tracking-normal text-black/30">(for appointment updates)</span>
                         </label>
-                        <input
-                          type="tel"
-                          value={phoneState}
-                          onChange={(e) => setPhoneState(e.target.value)}
-                          placeholder="e.g. 0821234567 or +27821234567"
-                          className={`w-full border-2 px-4 py-3 text-sm focus:outline-none transition-colors ${
-                            phoneState && isValidPhoneNumber(phoneState)
-                              ? "border-green-400 focus:border-green-500 bg-green-50/30"
-                              : phoneState && !isValidPhoneNumber(phoneState)
-                              ? "border-red-400 focus:border-red-500"
-                              : "border-black/10 focus:border-black"
-                          }`}
-                        />
+                        <div className={`flex border-2 transition-colors focus-within:ring-0 ${
+                          phoneState && !isValidPhoneNumber(phoneState)
+                            ? "border-red-400"
+                            : phoneState && isValidPhoneNumber(phoneState)
+                            ? "border-green-400"
+                            : "border-black/10 focus-within:border-black"
+                        }`}>
+                          <div className="flex items-center px-3 bg-black/[0.04] border-r border-black/10 text-sm text-black/50 select-none whitespace-nowrap gap-1.5 flex-shrink-0">
+                            <span>🇿🇦</span>
+                            <span className="font-medium">+27</span>
+                          </div>
+                          <input
+                            type="tel"
+                            inputMode="numeric"
+                            value={phoneState}
+                            onChange={(e) => setPhoneState(e.target.value)}
+                            placeholder="82 123 4567"
+                            className="flex-1 px-4 py-3 text-sm focus:outline-none bg-transparent text-black placeholder:text-black/25"
+                          />
+                        </div>
                         {phoneState && !isValidPhoneNumber(phoneState) && (
-                          <p className="text-xs text-red-600 mt-2">
-                            Please enter a valid 10-digit number (082 123 4567) or +27 format (+27821234567)
+                          <p className="text-xs text-red-600">
+                            Enter your number without the leading 0 — e.g. 82 123 4567
                           </p>
                         )}
                         {phoneState && isValidPhoneNumber(phoneState) && (
-                          <p className="text-xs text-green-600 mt-2">✓ Valid phone number</p>
+                          <p className="text-xs text-green-600">✓ Valid</p>
                         )}
                       </div>
 

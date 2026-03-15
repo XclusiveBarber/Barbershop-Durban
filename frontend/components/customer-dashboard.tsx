@@ -211,6 +211,12 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
           margin: 0;
           width: 100%;
         }
+        /* Scales the cell size down perfectly on mobile to prevent squashing */
+        @media (max-width: 640px) {
+          .rdp {
+            --rdp-cell-size: 10.5vw;
+          }
+        }
         .rdp-caption {
           padding: 0.5rem 0 1.5rem;
           font-size: 1.1rem;
@@ -582,20 +588,20 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
 
       {/* ── Reschedule Modal ────────────────────────────────── */}
       {isRescheduleModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4">
           <div className="bg-white w-full max-w-3xl p-4 md:p-8 shadow-2xl overflow-y-auto max-h-[95vh]">
-            <div className="flex justify-between items-center mb-6 md:mb-8">
+            <div className="flex justify-between items-center mb-5 md:mb-8">
               <h3 className="text-xl md:text-2xl font-light text-black">Reschedule Appointment</h3>
-              <button onClick={() => setIsRescheduleModalOpen(false)} className="text-black/50 hover:text-black border-2 border-transparent hover:border-black/10 p-2 transition-all flex-shrink-0">
-                <X className="w-6 h-6" />
+              <button onClick={() => setIsRescheduleModalOpen(false)} className="text-black/50 hover:text-black border-2 border-transparent hover:border-black/10 p-1.5 md:p-2 transition-all flex-shrink-0">
+                <X className="w-5 h-5 md:w-6 md:h-6" />
               </button>
             </div>
 
             {/* Side-by-side on desktop, stacked on mobile */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
-              {/* Calendar */}
-              <div className="flex justify-center border border-black/10 p-4 md:p-8 bg-black/[0.01] overflow-x-auto">
-                <div className="w-full min-w-fit">
+              {/* Calendar Container - Padding reduced on mobile, preserved on desktop */}
+              <div className="flex justify-center border border-black/10 p-2 sm:p-4 md:p-8 bg-black/[0.01] overflow-x-auto">
+                <div className="w-full min-w-fit flex justify-center">
                   <DayPicker
                     mode="single"
                     selected={rescheduleDate}
@@ -611,7 +617,8 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                 <p className="text-xs font-medium uppercase tracking-widest text-black/40 flex items-center gap-2">
                   <Clock className="w-4 h-4" /> Available Times
                 </p>
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-2">
+                {/* Scrollable container added here to prevent modal stretching */}
+                <div className="grid grid-cols-2 gap-2 max-h-[200px] md:max-h-[300px] overflow-y-auto pr-1">
                   {!rescheduleDate ? (
                     <p className="col-span-2 text-xs text-black/40 py-4">Select a date first</p>
                   ) : loadingRescheduleSlots ? (
@@ -625,7 +632,7 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                         <button
                           key={time}
                           onClick={() => setRescheduleTime(time)}
-                          className={`p-3 text-sm border-2 transition-all ${
+                          className={`p-2.5 md:p-3 text-xs md:text-sm border-2 transition-all ${
                             isSelected
                               ? "bg-black text-white border-black"
                               : "border-black/10 hover:border-black text-black"

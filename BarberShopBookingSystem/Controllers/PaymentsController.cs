@@ -1,8 +1,10 @@
 ﻿using BarberShopBookingSystem.Data;
 using BarberShopBookingSystem.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -11,6 +13,7 @@ namespace BarberShopBookingSystem.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class PaymentsController : ControllerBase
     {
         private readonly IConfiguration _config;
@@ -30,6 +33,10 @@ namespace BarberShopBookingSystem.Controllers
             // 1. SECURITY FIX: Fetch the appointment to get the REAL price from the database!
             var appointment = await _context.Appointments.FindAsync(request.AppointmentId);
             if (appointment == null) return NotFound("Appointment not found.");
+
+            // SECURITY FIX: Verify the appointment belongs to the logged-in user (prevents IDOR)
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            if (appointment.UserId != userId) return Forbid();
 
             var secretKey = _config["Yoco:SecretKey"];
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", secretKey);
@@ -81,6 +88,10 @@ namespace BarberShopBookingSystem.Controllers
         {
             var appointment = await _context.Appointments.FindAsync(request.AppointmentId);
             if (appointment == null) return NotFound("Appointment not found.");
+
+            // SECURITY FIX: Verify the appointment belongs to the logged-in user (prevents IDOR)
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            if (appointment.UserId != userId) return Forbid();
 
             // Make sure we actually have a Yoco ID saved for this appointment
             if (string.IsNullOrEmpty(appointment.YocoPaymentId))

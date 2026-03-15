@@ -193,19 +193,19 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
 
   const AppointmentCard = ({ appt }: { appt: Appointment }) => (
     <div
-      className={`border-2 p-6 transition-colors ${
+      className={`border-2 p-4 md:p-6 transition-colors ${
         appt.is_late
           ? 'border-orange-300 bg-orange-50'
           : 'border-black/10 hover:border-accent/30'
       }`}
     >
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h3 className="text-lg font-light">{appt.service_name}</h3>
+      <div className="flex justify-between items-start mb-4 md:mb-6 gap-2">
+        <div className="min-w-0">
+          <h3 className="text-base md:text-lg font-light truncate">{appt.service_name}</h3>
           <p className="text-xs text-black/40 mt-1 flex items-center gap-2">
-            {appt.customer_name}
+            <span className="truncate">{appt.customer_name}</span>
             {appt.is_late && (
-              <span className="px-1.5 py-0.5 text-[9px] uppercase tracking-widest font-semibold bg-red-100 text-red-600">
+              <span className="px-1.5 py-0.5 text-[9px] uppercase tracking-widest font-semibold bg-red-100 text-red-600 flex-shrink-0">
                 LATE
               </span>
             )}
@@ -214,7 +214,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
             <p className="text-[10px] text-black/30 italic mt-0.5">No email — notification skipped</p>
           )}
         </div>
-        <span className={`px-3 py-1 text-[10px] uppercase tracking-widest font-medium ${
+        <span className={`px-2 md:px-3 py-1 text-[9px] md:text-[10px] uppercase tracking-widest font-medium flex-shrink-0 ${
           appt.status === 'confirmed'
             ? 'bg-accent text-accent-foreground'
             : appt.is_late
@@ -225,42 +225,45 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
         </span>
       </div>
 
-      <div className="space-y-3 mb-6">
-        <div className="flex items-center gap-3 text-sm text-black/60">
-          <Calendar className="w-4 h-4 text-black/30" />
-          {format(new Date(appt.appointment_date), 'EEEE, MMMM d, yyyy')}
+      <div className="space-y-2 md:space-y-3 mb-4 md:mb-6">
+        <div className="flex items-center gap-3 text-xs md:text-sm text-black/60">
+          <Calendar className="w-3.5 md:w-4 h-3.5 md:h-4 text-black/30 flex-shrink-0" />
+          <span className="truncate">{format(new Date(appt.appointment_date), 'EEEE, MMMM d, yyyy')}</span>
         </div>
-        <div className="flex items-center gap-3 text-sm text-black/60">
-          <Clock className="w-4 h-4 text-black/30" />
+        <div className="flex items-center gap-3 text-xs md:text-sm text-black/60">
+          <Clock className="w-3.5 md:w-4 h-3.5 md:h-4 text-black/30 flex-shrink-0" />
           {appt.appointment_time}
         </div>
-        <div className="text-sm font-medium">{appt.service_price}</div>
+        <div className="text-xs md:text-sm font-medium">{appt.service_price}</div>
       </div>
 
-      <div className="flex gap-3 pt-6 border-t border-black/5">
+      <div className="flex flex-col md:flex-row gap-2 md:gap-3 pt-4 md:pt-6 border-t border-black/5">
         <button
           onClick={() => handleMarkLate(appt.id)}
           disabled={!!updating || appt.is_late}
-          className="flex-1 border-2 border-orange-200 text-orange-500 px-4 py-2 text-xs uppercase tracking-widest hover:bg-orange-50 hover:border-orange-300 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex-1 border-2 border-orange-200 text-orange-500 px-2 md:px-4 py-2 text-[10px] md:text-xs uppercase tracking-widest hover:bg-orange-50 hover:border-orange-300 transition-all flex items-center justify-center gap-1 md:gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <AlertCircle className="w-3 h-3" />
-          {updating === appt.id + 'late' ? 'Marking…' : 'Mark Late'}
+          <AlertCircle className="w-3 h-3 flex-shrink-0" />
+          <span className="hidden md:inline">{updating === appt.id + 'late' ? 'Marking…' : 'Mark Late'}</span>
+          <span className="md:hidden">{updating === appt.id + 'late' ? 'Marking…' : 'Late'}</span>
         </button>
         <button
           onClick={() => updateStatus(appt.id, 'completed')}
           disabled={!!updating}
-          className="flex-1 bg-accent text-accent-foreground px-4 py-2 text-xs uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex-1 bg-accent text-accent-foreground px-2 md:px-4 py-2 text-[10px] md:text-xs uppercase tracking-widest hover:opacity-90 transition-all flex items-center justify-center gap-1 md:gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <CheckCircle className="w-3 h-3" />
-          {updating === appt.id + 'completed' ? 'Completing…' : 'Complete'}
+          <CheckCircle className="w-3 h-3 flex-shrink-0" />
+          <span className="hidden md:inline">{updating === appt.id + 'completed' ? 'Completing…' : 'Complete'}</span>
+          <span className="md:hidden">{updating === appt.id + 'completed' ? 'Completing…' : 'Done'}</span>
         </button>
         <button
           onClick={() => setCancelConfirmId(appt.id)}
           disabled={!!updating || appt.status === 'cancelled'}
-          className="flex-1 border-2 border-red-200 text-red-500 px-4 py-2 text-xs uppercase tracking-widest hover:bg-red-50 hover:border-red-300 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex-1 border-2 border-red-200 text-red-500 px-2 md:px-4 py-2 text-[10px] md:text-xs uppercase tracking-widest hover:bg-red-50 hover:border-red-300 transition-all flex items-center justify-center gap-1 md:gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <X className="w-3 h-3" />
-          {updating === appt.id + 'cancelled' ? 'Cancelling…' : 'Cancel'}
+          <X className="w-3 h-3 flex-shrink-0" />
+          <span className="hidden md:inline">{updating === appt.id + 'cancelled' ? 'Cancelling…' : 'Cancel'}</span>
+          <span className="md:hidden">{updating === appt.id + 'cancelled' ? 'Cancelling…' : 'Cancel'}</span>
         </button>
       </div>
     </div>
@@ -272,29 +275,31 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
     <div className="min-h-screen bg-white text-black">
 
       {/* Header */}
-      <header className="bg-black py-4">
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 flex items-center justify-center">
+      <header className="bg-black py-3 md:py-4">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-2 md:gap-3 min-w-0">
+            <div className="w-8 md:w-10 h-8 md:h-10 flex items-center justify-center flex-shrink-0">
               <img src="/logo.png" alt="Xclusive Barber Logo" className="w-full h-full object-contain" />
             </div>
-            <span className="text-xl md:text-2xl font-semibold tracking-tight text-white font-montserrat">
+            <span className="text-sm md:text-xl lg:text-2xl font-semibold tracking-tight text-white font-montserrat truncate">
               XCLUSIVE BARBER
             </span>
           </Link>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 md:gap-6 flex-shrink-0">
             <button
               onClick={() => setTab('settings')}
-              className="hidden md:flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors font-semibold font-montserrat"
+              className="hidden md:flex items-center gap-2 text-xs md:text-sm text-white/60 hover:text-white transition-colors font-semibold font-montserrat whitespace-nowrap"
             >
-              <User className="w-4 h-4" />
+              <User className="w-3.5 md:w-4 h-3.5 md:h-4" />
               {user.name}
             </button>
-            <Link href="/" className="text-sm text-white/60 hover:text-white transition-colors font-semibold font-montserrat flex items-center gap-2">
-              <Home className="w-4 h-4" /> Home
+            <Link href="/" className="text-xs md:text-sm text-white/60 hover:text-white transition-colors font-semibold font-montserrat flex items-center gap-1 md:gap-2 whitespace-nowrap">
+              <Home className="w-3.5 md:w-4 h-3.5 md:h-4" /> 
+              <span className="hidden md:inline">Home</span>
             </Link>
-            <button onClick={handleLogout} className="text-sm text-white/60 hover:text-white transition-colors font-semibold font-montserrat flex items-center gap-2">
-              <LogOut className="w-4 h-4" /> Logout
+            <button onClick={handleLogout} className="text-xs md:text-sm text-white/60 hover:text-white transition-colors font-semibold font-montserrat flex items-center gap-1 md:gap-2 whitespace-nowrap">
+              <LogOut className="w-3.5 md:w-4 h-3.5 md:h-4" /> 
+              <span className="hidden md:inline">Logout</span>
             </button>
           </div>
         </div>
@@ -302,12 +307,12 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
 
       {/* Tabs */}
       <div className="border-b border-black/5">
-        <div className="max-w-7xl mx-auto px-6 flex gap-8">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 flex gap-2 md:gap-8 overflow-x-auto">
           {tabList.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`py-4 text-xs uppercase tracking-widest transition-colors border-b-2 flex items-center gap-2 ${
+              className={`py-3 md:py-4 text-[10px] md:text-xs uppercase tracking-widest transition-colors border-b-2 flex items-center gap-1.5 md:gap-2 whitespace-nowrap flex-shrink-0 ${
                 tab === t.id
                   ? 'border-accent text-black'
                   : 'border-transparent text-black/30 hover:text-black/60'
@@ -316,7 +321,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
               {t.icon}
               {t.label}
               {t.count > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                <span className={`text-[8px] md:text-[10px] px-1 md:px-1.5 py-0.5 rounded-full flex-shrink-0 ${
                   tab === t.id ? 'bg-accent text-accent-foreground' : 'bg-black/10 text-black/40'
                 }`}>
                   {t.count}
@@ -327,7 +332,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
 
         {loading ? (
           <div className="text-center py-24">
@@ -346,14 +351,14 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
                   </span>
                 )}
                 {activeList.length === 0 ? (
-                  <div className="border-2 border-black/10 p-16 text-center">
-                    <Calendar className="w-12 h-12 text-black/15 mx-auto mb-6" />
+                  <div className="border-2 border-black/10 p-8 md:p-16 text-center">
+                    <Calendar className="w-8 md:w-12 h-8 md:h-12 text-black/15 mx-auto mb-4 md:mb-6" />
                     <p className="text-black/40 text-sm">
                       {tab === 'today' ? 'No active appointments today' : 'No upcoming appointments'}
                     </p>
                   </div>
                 ) : (
-                  <div className="grid md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     {activeList.map(appt => <AppointmentCard key={appt.id} appt={appt} />)}
                   </div>
                 )}
@@ -439,27 +444,27 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
 
         {/* Settings tab */}
         {tab === 'settings' && (
-          <div className="max-w-lg space-y-10">
+          <div className="max-w-lg space-y-8 md:space-y-10">
             <section>
               <span className="text-black/40 uppercase tracking-widest text-xs mb-6 block">Account Information</span>
               <div className="border-2 border-black/10 divide-y divide-black/5">
                 {/* Name */}
-                <div className="p-6">
+                <div className="p-4 md:p-6">
                   <label className="text-[10px] uppercase tracking-widest text-black/40 font-medium block mb-3">
                     Display Name
                   </label>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col md:flex-row gap-3">
                     <input
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       placeholder="Your full name"
-                      className="flex-1 border-2 border-black/10 px-4 py-2.5 text-sm focus:outline-none focus:border-black transition-colors bg-white"
+                      className="w-full md:flex-1 border-2 border-black/10 px-4 py-2.5 text-sm focus:outline-none focus:border-black transition-colors bg-white"
                     />
                     <button
                       onClick={handleSaveProfile}
                       disabled={savingProfile || editName.trim() === user.name}
-                      className="px-5 py-2.5 bg-accent text-accent-foreground text-xs uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="w-full md:w-auto px-5 py-2.5 bg-accent text-accent-foreground text-xs uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center md:justify-start gap-2 whitespace-nowrap"
                     >
                       <Save className="w-3.5 h-3.5" />
                       {savingProfile ? 'Saving…' : 'Save'}
@@ -468,22 +473,22 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
                 </div>
 
                 {/* Email */}
-                <div className="p-6">
+                <div className="p-4 md:p-6">
                   <label className="text-[10px] uppercase tracking-widest text-black/40 font-medium block mb-3">
                     Email Address
                   </label>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col md:flex-row gap-3">
                     <input
                       type="email"
                       value={editEmail}
                       onChange={(e) => setEditEmail(e.target.value)}
                       placeholder="your@email.com"
-                      className="flex-1 border-2 border-black/10 px-4 py-2.5 text-sm focus:outline-none focus:border-black transition-colors bg-white"
+                      className="w-full md:flex-1 border-2 border-black/10 px-4 py-2.5 text-sm focus:outline-none focus:border-black transition-colors bg-white"
                     />
                     <button
                       onClick={handleSaveProfile}
                       disabled={savingProfile || (editEmail.trim() === user.email && editName.trim() === user.name)}
-                      className="px-5 py-2.5 bg-accent text-accent-foreground text-xs uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="w-full md:w-auto px-5 py-2.5 bg-accent text-accent-foreground text-xs uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center md:justify-start gap-2 whitespace-nowrap"
                     >
                       <Save className="w-3.5 h-3.5" />
                       {savingProfile ? 'Saving…' : 'Save'}
@@ -500,7 +505,7 @@ export function BarberDashboard({ user }: { user: AuthUser }) {
                 </div>
 
                 {/* Role */}
-                <div className="p-6">
+                <div className="p-4 md:p-6">
                   <label className="text-[10px] uppercase tracking-widest text-black/40 font-medium block mb-3">
                     Account Type
                   </label>

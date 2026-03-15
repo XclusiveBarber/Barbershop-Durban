@@ -67,19 +67,19 @@ function StepHeader({
   title: string;
 }) {
   return (
-    <div className="flex items-center justify-between mb-8">
+    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-0 mb-6 md:mb-8">
       {onBack ? (
         <button
           onClick={onBack}
-          className="flex items-center text-sm hover:text-black transition-colors text-black/50"
+          className="flex items-center text-xs md:text-sm hover:text-black transition-colors text-black/50 whitespace-nowrap"
         >
-          <ChevronLeft className="w-4 h-4 mr-1" /> Back
+          <ChevronLeft className="w-3.5 md:w-4 h-3.5 md:h-4 mr-1" /> Back
         </button>
       ) : (
-        <div className="w-16" />
+        <div className="w-12 md:w-16" />
       )}
-      <h3 className="text-2xl font-light text-black">{title}</h3>
-      <div className="w-16" />
+      <h3 className="text-lg md:text-2xl font-light text-black text-center flex-1 md:flex-none">{title}</h3>
+      <div className="w-12 md:w-16" />
     </div>
   );
 }
@@ -96,37 +96,37 @@ function BookingSummaryCard({
   const totalPrice = service ? Number(service.price) : 0;
 
   return (
-    <div className="bg-black/[0.03] border-2 border-black/5 p-5 space-y-3 mb-6">
-      <p className="text-[10px] uppercase tracking-widest text-black/30 font-medium mb-3">
+    <div className="bg-black/[0.03] border-2 border-black/5 p-4 md:p-5 space-y-2 md:space-y-3 mb-4 md:mb-6">
+      <p className="text-[10px] uppercase tracking-widest text-black/30 font-medium mb-2 md:mb-3">
         Booking Summary
       </p>
       {service && (
-        <div className="flex justify-between text-sm">
-          <span className="text-black/50 flex items-center gap-2">
-            <Scissors className="w-3.5 h-3.5" /> Service
+        <div className="flex justify-between text-xs md:text-sm gap-2">
+          <span className="text-black/50 flex items-center gap-2 flex-shrink-0">
+            <Scissors className="w-3 md:w-3.5 h-3 md:h-3.5" /> Service
           </span>
-          <span className="font-medium text-black">{service.name}</span>
+          <span className="font-medium text-black text-right">{service.name}</span>
         </div>
       )}
-      <div className="flex justify-between text-sm">
-        <span className="text-black/50 flex items-center gap-2">
-          <CalendarIcon className="w-3.5 h-3.5" /> Date
+      <div className="flex justify-between text-xs md:text-sm gap-2">
+        <span className="text-black/50 flex items-center gap-2 flex-shrink-0">
+          <CalendarIcon className="w-3 md:w-3.5 h-3 md:h-3.5" /> Date
         </span>
         <span className="font-medium text-black">
           {date ? format(date, "EEE, MMM d") : "—"}
         </span>
       </div>
-      <div className="flex justify-between text-sm">
-        <span className="text-black/50 flex items-center gap-2">
-          <Clock className="w-3.5 h-3.5" /> Time
+      <div className="flex justify-between text-xs md:text-sm gap-2">
+        <span className="text-black/50 flex items-center gap-2 flex-shrink-0">
+          <Clock className="w-3 md:w-3.5 h-3 md:h-3.5" /> Time
         </span>
         <span className="font-medium text-black">
           {time ?? "—"}
         </span>
       </div>
-      <div className="pt-3 border-t border-black/10 flex justify-between">
-        <span className="font-semibold text-sm text-black">Total</span>
-        <span className="font-semibold text-sm text-black">R{totalPrice}</span>
+      <div className="pt-2 md:pt-3 border-t border-black/10 flex justify-between text-xs md:text-sm">
+        <span className="font-semibold text-black">Total</span>
+        <span className="font-semibold text-black">R{totalPrice}</span>
       </div>
     </div>
   );
@@ -438,7 +438,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   transition={{ duration: 0.2 }}
                   className="space-y-4"
                 >
-                  <h3 className="text-2xl font-semibold mb-8 text-black font-montserrat">
+                  <h3 className="text-xl md:text-2xl font-semibold mb-6 md:mb-8 text-black font-montserrat">
                     Choose a Service
                   </h3>
                   {loadingData ? (
@@ -447,27 +447,32 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                     <div className="text-center py-12 text-black/50">No services available</div>
                   ) : (
                     <>
-                      <div className="grid gap-3">
+                      <div className="grid gap-2 md:gap-3">
                         {services.map((service) => {
                           const isSelected = selectedService?.id === service.id;
                           return (
                             <button
                               key={service.id}
                               onClick={() => setSelectedService(service)}
-                              className={`flex items-center justify-between p-5 border-2 text-left transition-all hover:border-black group ${
+                              className={`flex items-stretch justify-between p-3 md:p-5 border-2 text-left transition-all hover:border-black group gap-3 ${
                                 isSelected
                                   ? "border-black bg-black/[0.02]"
                                   : "border-black/10"
                               }`}
                             >
-                              <div>
-                                <p className="font-medium text-base text-black">{service.name}</p>
-                                <p className="text-xs text-black/40 mt-0.5">{service.description || "Haircut service"}</p>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium text-sm md:text-base text-black truncate">{service.name}</p>
+                                <p className="text-xs text-black/40 mt-0.5 line-clamp-2">{service.description || "Haircut service"}</p>
                               </div>
-                              <div className="text-right flex items-center gap-3">
-                                <p className="font-semibold text-base text-black">R{service.price}</p>
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'border-black' : 'border-black/20 group-hover:border-black/50'}`}>
-                                  {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-black" />}
+                              <div className="text-right flex items-center gap-2 md:gap-3 flex-shrink-0">
+                                <div className="flex flex-col items-end">
+                                  <p className="font-semibold text-sm md:text-base text-black">R{service.price}</p>
+                                  {service.duration_minutes && (
+                                    <p className="text-[10px] text-black/40">{service.duration_minutes}min</p>
+                                  )}
+                                </div>
+                                <div className={`w-4 md:w-5 h-4 md:h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? 'border-black' : 'border-black/20 group-hover:border-black/50'}`}>
+                                  {isSelected && <div className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-black" />}
                                 </div>
                               </div>
                             </button>
@@ -477,7 +482,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                       <button
                         disabled={!selectedService}
                         onClick={goNext}
-                        className="w-full bg-accent text-accent-foreground py-4 mt-8 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:opacity-90 font-medium text-sm uppercase tracking-wide"
+                        className="w-full bg-accent text-accent-foreground py-3 md:py-4 mt-6 md:mt-8 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:opacity-90 font-medium text-xs md:text-sm uppercase tracking-wide"
                       >
                         Continue
                       </button>
@@ -498,21 +503,23 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                 >
                   <StepHeader onBack={goPrev} title="Select Date & Time" />
 
-                  <div className="grid md:grid-cols-2 gap-10">
-                    <div className="flex justify-center border border-black/10 p-8 bg-black/[0.01]">
-                      <DayPicker
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={(date) => { setSelectedDate(date); setSelectedTime(null); }}
-                        disabled={{ before: new Date() }}
-                        className="p-0 m-0 w-full"
-                      />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
+                    <div className="flex justify-center border border-black/10 p-4 md:p-8 bg-black/[0.01] overflow-x-auto">
+                      <div className="w-full min-w-fit">
+                        <DayPicker
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={(date) => { setSelectedDate(date); setSelectedTime(null); }}
+                          disabled={{ before: new Date() }}
+                          className="p-0 m-0 w-full"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-4">
                       <p className="text-xs font-medium uppercase tracking-widest text-black/40 flex items-center gap-2">
                         <Clock className="w-4 h-4" /> Available Times
                       </p>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-2 md:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
                         {loadingSlotsData ? (
                           <p className="col-span-2 text-xs text-black/40 py-4">Loading available times...</p>
                         ) : availableSlots.length === 0 ? (
@@ -524,7 +531,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                               <button
                                 key={time}
                                 onClick={() => setSelectedTime(time)}
-                                className={`p-3 text-sm border-2 transition-all ${
+                                className={`p-2.5 md:p-3 text-xs md:text-sm border-2 transition-all ${
                                   isSelected
                                     ? "bg-black text-white border-black"
                                     : "border-black/10 hover:border-black text-black"
@@ -539,7 +546,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                       <button
                         disabled={!selectedTime || !selectedDate}
                         onClick={enterStep3}
-                        className="w-full bg-accent text-accent-foreground py-4 mt-4 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:opacity-90 font-medium text-sm uppercase tracking-wide"
+                        className="w-full bg-accent text-accent-foreground py-3 md:py-4 mt-2 md:mt-4 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:opacity-90 font-medium text-xs md:text-sm uppercase tracking-wide"
                       >
                         Continue
                       </button>

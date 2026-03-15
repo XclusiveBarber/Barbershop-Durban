@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar as CalendarIcon, Clock, DollarSign, LogOut, ChevronLeft, ChevronRight, Home, User, Scissors, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Banknote, LogOut, ChevronLeft, ChevronRight, Home, User, Scissors, Plus, Pencil } from 'lucide-react';
 import { format, addDays, startOfWeek } from 'date-fns';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -27,13 +27,9 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'day' | 'week'>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedTab, setSelectedTab] = useState<'schedule' | 'analytics' | 'crm' | 'services'>('schedule');
+  const [selectedTab, setSelectedTab] = useState<'schedule' | 'analytics' | 'services'>('schedule');
 
-  useEffect(() => {
-    fetchAppointments();
-  }, [currentDate, view]);
-
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     try {
       let url = '/api/appointments/all';
       if (view === 'day') {
@@ -51,7 +47,14 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDate, view, accessToken]);
+
+  // Refetch when date/view changes OR when switching back to schedule tab
+  useEffect(() => {
+    if (selectedTab === 'schedule') {
+      fetchAppointments();
+    }
+  }, [currentDate, view, selectedTab, fetchAppointments]);
 
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {
@@ -96,12 +99,11 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
   const todayAppointments = getDayAppointments(new Date());
   const todayRevenue = todayAppointments
     .filter(a => a.status === 'completed')
-    .reduce((sum, a) => sum + parseInt(a.service_price.replace('R', '')), 0);
+    .reduce((sum, a) => sum + parseInt(a.service_price.replace('R', '') || '0'), 0);
 
   const tabs = [
     { id: 'schedule' as const, label: 'Master Schedule' },
     { id: 'analytics' as const, label: 'Analytics' },
-    { id: 'crm' as const, label: 'Customer CRM' },
     { id: 'services' as const, label: 'Services' },
   ];
 
@@ -168,7 +170,7 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
               <div className="border-2 border-black/10 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xs uppercase tracking-widest text-black/40">{"Today's Revenue"}</h3>
-                  <DollarSign className="w-4 h-4 text-black/20" />
+                  <Banknote className="w-4 h-4 text-black/20" />
                 </div>
                 <p className="text-3xl font-light">R{todayRevenue}</p>
               </div>
@@ -309,7 +311,6 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
         )}
 
         {selectedTab === 'analytics' && <AnalyticsTab />}
-        {selectedTab === 'crm' && <CRMTab />}
         {selectedTab === 'services' && <ServicesTab />}
       </div>
     </div>
@@ -328,6 +329,7 @@ function AnalyticsTab() {
   }, [period]);
 
   const fetchAnalytics = async () => {
+    setLoading(true);
     try {
       const headers: Record<string, string> = {};
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
@@ -437,116 +439,10 @@ function AnalyticsTab() {
   );
 }
 
-function CRMTab() {
-  const { accessToken } = useAuth();
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchCustomers();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const fetchCustomers = async () => {
-    try {
-      const headers: Record<string, string> = {};
-      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-      const response = await fetch('/api/customers', { headers });
-      const data = await response.json();
-      if (response.ok) setCustomers(Array.isArray(data) ? data : (data.customers ?? []));
-    } catch {
-      // silently handle
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateCustomer = async (userId: number, field: string, value: string) => {
-    try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-      const response = await fetch('/api/customers', {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ user_id: userId, [field]: value })
-      });
-      if (response.ok) {
-        toast.success('Customer updated');
-        fetchCustomers();
-      } else {
-        toast.error('Failed to update customer');
-      }
-    } catch {
-      toast.error('Failed to update customer');
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="text-center py-12">
-        <div className="inline-block w-8 h-8 border-2 border-black/10 border-t-black rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="border-2 border-black/10">
-      <div className="p-6 border-b border-black/10">
-        <h2 className="text-xl font-light">Customer Database</h2>
-        <p className="text-xs text-black/40 mt-1">{customers.length} total customers</p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="border-b border-black/10">
-            <tr>
-              <th className="text-left py-3 px-6 text-[10px] font-medium text-black/30 uppercase tracking-widest">Name</th>
-              <th className="text-left py-3 px-6 text-[10px] font-medium text-black/30 uppercase tracking-widest">Phone</th>
-              <th className="text-left py-3 px-6 text-[10px] font-medium text-black/30 uppercase tracking-widest">Visits</th>
-              <th className="text-left py-3 px-6 text-[10px] font-medium text-black/30 uppercase tracking-widest">Last Visit</th>
-              <th className="text-left py-3 px-6 text-[10px] font-medium text-black/30 uppercase tracking-widest">Preferences</th>
-              <th className="text-left py-3 px-6 text-[10px] font-medium text-black/30 uppercase tracking-widest">Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {customers.map((customer: any) => (
-              <tr key={customer.id} className="border-b border-black/5 hover:bg-black/[0.02]">
-                <td className="py-4 px-6 text-sm">{customer.name || 'N/A'}</td>
-                <td className="py-4 px-6 text-sm text-black/40">{customer.phone}</td>
-                <td className="py-4 px-6 text-sm text-black/60">{customer.total_appointments}</td>
-                <td className="py-4 px-6 text-sm text-black/40">
-                  {customer.last_visit ? format(new Date(customer.last_visit), 'MMM d, yyyy') : 'Never'}
-                </td>
-                <td className="py-4 px-6">
-                  <input
-                    type="text"
-                    defaultValue={customer.preferences || ''}
-                    onBlur={(e) => handleUpdateCustomer(customer.id, 'preferences', e.target.value)}
-                    placeholder="e.g., #2 on sides"
-                    className="text-sm bg-black/[0.03] border-2 border-black/10 text-black px-2 py-1 w-full placeholder:text-black/20 focus:border-accent focus:outline-none"
-                  />
-                </td>
-                <td className="py-4 px-6">
-                  <input
-                    type="text"
-                    defaultValue={customer.notes || ''}
-                    onBlur={(e) => handleUpdateCustomer(customer.id, 'notes', e.target.value)}
-                    placeholder="Add notes..."
-                    className="text-sm bg-black/[0.03] border-2 border-black/10 text-black px-2 py-1 w-full placeholder:text-black/20 focus:border-accent focus:outline-none"
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 // ─── Services Tab ──────────────────────────────────────────────────────────────
 
 interface Haircut {
-  id: number;
+  id: string;
   name: string;
   price: number;
   description: string | null;
@@ -561,6 +457,13 @@ function ServicesTab() {
   const [newName, setNewName] = useState('');
   const [newPrice, setNewPrice] = useState('');
   const [newDesc, setNewDesc] = useState('');
+
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     fetchHaircuts();
@@ -616,6 +519,55 @@ function ServicesTab() {
     }
   };
 
+  const startEdit = (haircut: Haircut) => {
+    setEditingId(String(haircut.id));
+    setEditName(haircut.name);
+    setEditPrice(String(haircut.price));
+    setEditDesc(haircut.description || '');
+    setShowForm(false); // close add form if open
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditName('');
+    setEditPrice('');
+    setEditDesc('');
+  };
+
+  const handleEditService = async (id: string) => {
+    if (!editName.trim() || !editPrice.trim()) {
+      toast.error('Name and price are required');
+      return;
+    }
+    const price = parseFloat(editPrice);
+    if (isNaN(price) || price <= 0) {
+      toast.error('Price must be a valid number');
+      return;
+    }
+    setUpdating(true);
+    try {
+      const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) authHeaders['Authorization'] = `Bearer ${accessToken}`;
+      const res = await fetch(`/api/haircuts/${id}`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({ name: editName.trim(), price, description: editDesc.trim() || null }),
+      });
+      if (res.ok) {
+        toast.success('Service updated');
+        cancelEdit();
+        fetchHaircuts();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || 'Failed to update service');
+      }
+    } catch {
+      toast.error('Failed to update service');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -633,7 +585,7 @@ function ServicesTab() {
           <p className="text-xs text-black/40 mt-1">{haircuts.length} services available</p>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { setShowForm(!showForm); cancelEdit(); }}
           className="flex items-center gap-2 bg-accent text-accent-foreground px-5 py-2.5 text-xs uppercase tracking-widest hover:opacity-90 transition-all font-semibold"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -719,19 +671,85 @@ function ServicesTab() {
             </thead>
             <tbody>
               {haircuts.map(haircut => (
-                <tr key={haircut.id} className="border-b border-black/5 hover:bg-black/[0.02]">
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-3">
-                      <Scissors className="w-4 h-4 text-black/20" />
-                      <span className="text-sm font-medium">{haircut.name}</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 text-sm text-black/40">
-                    {haircut.description || <span className="italic text-black/20">No description</span>}
-                  </td>
-                  <td className="py-4 px-6 text-right">
-                    <span className="text-sm font-medium">R{haircut.price}</span>
-                  </td>
+                <tr key={haircut.id} className="border-b border-black/5">
+                  {editingId === String(haircut.id) ? (
+                    <td colSpan={3} className="py-4 px-6">
+                      <div className="flex flex-wrap gap-3 items-end">
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase tracking-widest text-black/40">Name *</label>
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={e => setEditName(e.target.value)}
+                            className="px-3 py-2 border-2 border-black/10 text-sm focus:border-black focus:outline-none bg-white text-black w-48"
+                            disabled={updating}
+                            autoFocus
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase tracking-widest text-black/40">Price (R) *</label>
+                          <input
+                            type="number"
+                            value={editPrice}
+                            onChange={e => setEditPrice(e.target.value)}
+                            min="0"
+                            step="0.01"
+                            className="px-3 py-2 border-2 border-black/10 text-sm focus:border-black focus:outline-none bg-white text-black w-28"
+                            disabled={updating}
+                          />
+                        </div>
+                        <div className="space-y-1 flex-1 min-w-[8rem]">
+                          <label className="text-[10px] uppercase tracking-widest text-black/40">Description</label>
+                          <input
+                            type="text"
+                            value={editDesc}
+                            onChange={e => setEditDesc(e.target.value)}
+                            className="w-full px-3 py-2 border-2 border-black/10 text-sm focus:border-black focus:outline-none bg-white text-black"
+                            disabled={updating}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditService(String(haircut.id))}
+                            disabled={updating}
+                            className="bg-accent text-accent-foreground px-4 py-2 text-xs uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50"
+                          >
+                            {updating ? 'Saving…' : 'Save'}
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="border-2 border-black/10 px-4 py-2 text-xs uppercase tracking-widest hover:bg-black/5 transition-all"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  ) : (
+                    <>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <Scissors className="w-4 h-4 text-black/20" />
+                          <span className="text-sm font-medium">{haircut.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 text-sm text-black/40">
+                        {haircut.description || <span className="italic text-black/20">No description</span>}
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <span className="text-sm font-medium">R{haircut.price}</span>
+                          <button
+                            onClick={() => startEdit(haircut)}
+                            className="p-1.5 text-black/30 hover:text-black hover:bg-black/5 transition-colors rounded"
+                            title="Edit service"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>

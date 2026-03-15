@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar as CalendarIcon, Clock, Banknote, LogOut, ChevronLeft, ChevronRight, Home, User, Scissors, Plus, Pencil } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Banknote, LogOut, ChevronLeft, ChevronRight, Home, User, Scissors, Plus, Pencil, Trash2 } from 'lucide-react';
 import { format, addDays, startOfWeek } from 'date-fns';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -568,6 +568,31 @@ function ServicesTab() {
     }
   };
 
+  const handleDeleteService = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+    
+    setUpdating(true);
+    try {
+      const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) authHeaders['Authorization'] = `Bearer ${accessToken}`;
+      const res = await fetch(`/api/haircuts/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      });
+      if (res.ok) {
+        toast.success('Service deleted');
+        fetchHaircuts();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || 'Failed to delete service');
+      }
+    } catch {
+      toast.error('Failed to delete service');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -654,14 +679,14 @@ function ServicesTab() {
       )}
 
       {/* Services list */}
-      <div className="border-2 border-black/10 overflow-hidden">
+      <div className="border-2 border-black/10 overflow-x-auto">
         {haircuts.length === 0 ? (
           <div className="p-16 text-center">
             <Scissors className="w-12 h-12 text-black/15 mx-auto mb-6" />
             <p className="text-black/40 text-sm">No services yet. Add your first service above.</p>
           </div>
         ) : (
-          <table className="w-full">
+          <table className="w-full min-w-max">
             <thead className="border-b border-black/10">
               <tr>
                 <th className="text-left py-4 px-6 text-[10px] font-medium text-black/30 uppercase tracking-widest">Service</th>
@@ -737,7 +762,7 @@ function ServicesTab() {
                         {haircut.description || <span className="italic text-black/20">No description</span>}
                       </td>
                       <td className="py-4 px-6 text-right">
-                        <div className="flex items-center justify-end gap-3">
+                        <div className="flex items-center justify-end gap-2">
                           <span className="text-sm font-medium">R{haircut.price}</span>
                           <button
                             onClick={() => startEdit(haircut)}
@@ -745,6 +770,14 @@ function ServicesTab() {
                             title="Edit service"
                           >
                             <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteService(String(haircut.id), haircut.name)}
+                            disabled={updating}
+                            className="p-1.5 text-black/30 hover:text-red-600 hover:bg-red-50 transition-colors rounded disabled:opacity-50"
+                            title="Delete service"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>

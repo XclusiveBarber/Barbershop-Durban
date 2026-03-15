@@ -138,12 +138,12 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
 
       {/* Tabs */}
       <div className="border-b border-black/5">
-        <div className="max-w-7xl mx-auto px-6 flex gap-8">
+        <div className="max-w-7xl mx-auto px-6 flex gap-0 md:gap-8">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setSelectedTab(tab.id)}
-              className={`py-4 text-xs uppercase tracking-widest transition-colors border-b-2 ${
+              className={`flex-1 md:flex-none py-4 text-xs uppercase tracking-widest transition-colors border-b-2 ${
                 selectedTab === tab.id
                   ? 'border-accent text-black'
                   : 'border-transparent text-black/30 hover:text-black/60'
@@ -188,20 +188,20 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
             {/* Schedule */}
             <div className="border-2 border-black/10 p-6">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
                   <button
                     onClick={() => setCurrentDate(new Date())}
-                    className="px-4 py-2 border-2 border-black/10 text-xs uppercase tracking-widest hover:bg-black/5 transition-colors"
+                    className="px-3 md:px-4 py-2 border-2 border-black/10 text-xs uppercase tracking-widest hover:bg-black/5 transition-colors whitespace-nowrap"
                   >
                     Today
                   </button>
-                  <button onClick={() => setCurrentDate(prev => addDays(prev, -1))} className="p-2 border-2 border-black/10 hover:bg-black/5 transition-colors">
+                  <button onClick={() => setCurrentDate(prev => addDays(prev, -1))} className="p-2 border-2 border-black/10 hover:bg-black/5 transition-colors flex-shrink-0">
                     <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <h2 className="text-lg font-light min-w-[200px] text-center">
+                  <h2 className="text-base md:text-lg font-light flex-1 md:flex-initial text-center md:min-w-[200px] truncate">
                     {format(currentDate, 'EEEE, MMMM d')}
                   </h2>
-                  <button onClick={() => setCurrentDate(prev => addDays(prev, 1))} className="p-2 border-2 border-black/10 hover:bg-black/5 transition-colors">
+                  <button onClick={() => setCurrentDate(prev => addDays(prev, 1))} className="p-2 border-2 border-black/10 hover:bg-black/5 transition-colors flex-shrink-0">
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>

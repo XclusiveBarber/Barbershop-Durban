@@ -187,7 +187,7 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
         /* Scales the cell size down perfectly on mobile to prevent squashing */
         @media (max-width: 640px) {
           .rdp {
-            --rdp-cell-size: 10.5vw;
+            --rdp-cell-size: 9.5vw;
           }
         }
         .rdp-caption {
@@ -385,25 +385,25 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                 {past.length > 0 && (
                   <section>
                     <span className="text-black/40 uppercase tracking-widest text-xs mb-6 block">History</span>
-                    <div className="border-2 border-black/10 overflow-hidden">
-                      <table className="w-full">
+                    <div className="border-2 border-black/10 overflow-x-auto">
+                      <table className="w-full min-w-max">
                         <thead className="border-b border-black/10">
                           <tr>
-                            <th className="px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Service</th>
-                            <th className="px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Barber</th>
-                            <th className="px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Date</th>
-                            <th className="px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Status</th>
+                            <th className="px-4 md:px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Service</th>
+                            <th className="px-4 md:px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Barber</th>
+                            <th className="px-4 md:px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Date</th>
+                            <th className="px-4 md:px-6 py-4 text-left text-[10px] font-medium text-black/30 uppercase tracking-widest">Status</th>
                           </tr>
                         </thead>
                         <tbody>
                           {past.map((appt) => (
                             <tr key={appt.id} className="border-b border-black/5 hover:bg-black/[0.02]">
-                              <td className="px-6 py-4 text-sm">{appt.services ?? '—'}</td>
-                              <td className="px-6 py-4 text-sm text-black/40">{appt.barbers?.full_name ?? '—'}</td>
-                              <td className="px-6 py-4 text-sm text-black/40">
+                              <td className="px-4 md:px-6 py-4 text-sm whitespace-nowrap">{appt.services ?? '—'}</td>
+                              <td className="px-4 md:px-6 py-4 text-sm text-black/40 whitespace-nowrap">{appt.barbers?.full_name ?? '—'}</td>
+                              <td className="px-4 md:px-6 py-4 text-sm text-black/40 whitespace-nowrap">
                                 {format(new Date(appt.appointment_date), 'MMM d, yyyy')}
                               </td>
-                              <td className="px-6 py-4">
+                              <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                                 <span className={`text-[10px] uppercase tracking-widest ${
                                   appt.status === 'completed' ? 'text-black/40' : 'text-black/20'
                                 }`}>

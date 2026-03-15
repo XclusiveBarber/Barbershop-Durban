@@ -375,7 +375,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         /* Scales the cell size down perfectly on mobile to prevent squashing */
         @media (max-width: 640px) {
           .rdp {
-            --rdp-cell-size: 10.5vw;
+            --rdp-cell-size: 9.5vw;
           }
         }
         .rdp-caption {
@@ -467,7 +467,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                             <button
                               key={service.id}
                               onClick={() => setSelectedService(service)}
-                              className={`flex items-stretch justify-between p-3 md:p-5 border-2 text-left transition-all hover:border-black group gap-3 ${
+                              className={`flex items-center justify-between p-3 md:p-5 border-2 text-left transition-all hover:border-black group gap-3 min-w-0 ${
                                 isSelected
                                   ? "border-black bg-black/[0.02]"
                                   : "border-black/10"
@@ -478,7 +478,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                                 <p className="text-xs text-black/40 mt-0.5 line-clamp-2">{service.description || "Haircut service"}</p>
                               </div>
                               <div className="text-right flex items-center gap-2 md:gap-3 flex-shrink-0">
-                                <div className="flex flex-col items-end">
+                                <div className="flex flex-col items-end whitespace-nowrap">
                                   <p className="font-semibold text-sm md:text-base text-black">R{service.price}</p>
                                   {service.duration_minutes && (
                                     <p className="text-[10px] text-black/40">{service.duration_minutes}min</p>
@@ -517,7 +517,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   <StepHeader onBack={goPrev} title="Select Date & Time" />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
-                    <div className="flex justify-center border border-black/10 p-4 md:p-8 bg-black/[0.01] overflow-x-auto">
+                    <div className="flex justify-center border border-black/10 p-4 md:p-8 bg-black/[0.01] overflow-x-auto px-2 md:px-4">
                       <div className="w-full min-w-fit">
                         <DayPicker
                           mode="single"
@@ -763,16 +763,17 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
               Your appointment slot will be held while you complete payment. If you close the Yoco
               page without paying, the booking will remain pending.
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleProceedToPayment}
-                className="flex-1 bg-accent text-accent-foreground py-3 text-sm uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                className="flex-1 bg-accent text-accent-foreground py-3 px-4 text-xs md:text-sm uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
               >
-                <ExternalLink className="w-3.5 h-3.5" /> Continue to Payment
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Continue to Payment</span>
               </button>
               <button
                 onClick={() => setShowPaymentWarning(false)}
-                className="flex-1 border-2 border-black/10 text-black/50 py-3 text-sm uppercase tracking-widest font-semibold font-montserrat hover:border-black/30 hover:text-black transition-all"
+                className="flex-1 border-2 border-black/10 text-black/50 py-3 px-4 text-xs md:text-sm uppercase tracking-widest font-semibold font-montserrat hover:border-black/30 hover:text-black transition-all whitespace-nowrap"
               >
                 Go Back
               </button>

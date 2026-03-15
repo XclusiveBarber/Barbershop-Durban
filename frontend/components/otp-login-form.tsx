@@ -150,6 +150,17 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
         const authUser = data.user;
         const token = data.session?.access_token ?? null;
         if (!authUser) throw new Error("Account creation failed — please try again");
+
+        // If there is no session, email confirmation is required
+        if (!data.session) {
+          toast.success("Account created! Please check your email for a verification link.");
+          setPwMode("signin");
+          setPwPassword("");
+          setPwConfirm("");
+          return;
+        }
+
+        // If email confirmation is disabled in Supabase, this will run and log them in instantly
         await handlePostAuth(authUser.id, authUser.email ?? pwEmail.trim(), token);
       }
     } catch (err) {

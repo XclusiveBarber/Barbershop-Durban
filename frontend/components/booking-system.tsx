@@ -365,6 +365,12 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
           margin: 0;
           width: 100%;
         }
+        /* Scales the cell size down perfectly on mobile to prevent squashing */
+        @media (max-width: 640px) {
+          .rdp {
+            --rdp-cell-size: 10.5vw;
+          }
+        }
         .rdp-caption {
           padding: 0.5rem 0 1.5rem;
           font-size: 1.1rem;

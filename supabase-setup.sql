@@ -102,3 +102,11 @@ CREATE TRIGGER on_auth_user_email_changed
   FOR EACH ROW
   WHEN (OLD.email IS DISTINCT FROM NEW.email)
   EXECUTE FUNCTION public.handle_user_email_update();
+
+-- Fix: Prevent double-booking race condition
+-- A partial unique index ensures no two active (non-cancelled) appointments
+-- can share the same barber, date, and time slot simultaneously.
+-- The database enforces this atomically, blocking any concurrent duplicate insert.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_appointments_no_double_book
+  ON appointments (barber_id, appointment_date, time_slot)
+  WHERE status <> 'cancelled';

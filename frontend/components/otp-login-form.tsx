@@ -151,12 +151,16 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
         const token = data.session?.access_token ?? null;
         if (!authUser) throw new Error("Account creation failed — please try again");
 
-        // If there is no session, email confirmation is required
+        // If there is no session, email confirmation is required.
+        // Send an OTP login code (type: 'email') so the user can verify
+        // using the existing code-entry screen instead of a dead-end link.
         if (!data.session) {
-          toast.success("Account created! Please check your email for a verification link.");
-          setPwMode("signin");
+          await sendOtp({ email: pwEmail.trim() });
+          setOtpEmail(pwEmail.trim());
           setPwPassword("");
           setPwConfirm("");
+          toast.success("Account created! Enter the verification code we just sent to your email.");
+          setStep("otp-code");
           return;
         }
 

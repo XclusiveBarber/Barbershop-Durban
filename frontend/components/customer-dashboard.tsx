@@ -455,18 +455,18 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                   <label className="text-[10px] uppercase tracking-widest text-black/40 font-medium block mb-3">
                     Display Name
                   </label>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col md:flex-row gap-3">
                     <input
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       placeholder="Your full name"
-                      className="flex-1 border-2 border-black/10 px-4 py-2.5 text-sm focus:outline-none focus:border-black transition-colors bg-white"
+                      className="w-full md:flex-1 border-2 border-black/10 px-4 py-2.5 text-sm focus:outline-none focus:border-black transition-colors bg-white"
                     />
                     <button
                       onClick={handleSaveProfile}
                       disabled={savingProfile || editName.trim() === user.name}
-                      className="px-5 py-2.5 bg-accent text-accent-foreground text-xs uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="w-full md:w-auto px-5 py-2.5 bg-accent text-accent-foreground text-xs uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center md:justify-start gap-2 whitespace-nowrap"
                     >
                       <Save className="w-3.5 h-3.5" />
                       {savingProfile ? 'Saving…' : 'Save'}
@@ -479,18 +479,18 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                   <label className="text-[10px] uppercase tracking-widest text-black/40 font-medium block mb-3">
                     Email Address
                   </label>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col md:flex-row gap-3">
                     <input
                       type="email"
                       value={editEmail}
                       onChange={(e) => setEditEmail(e.target.value)}
                       placeholder="your@email.com"
-                      className="flex-1 border-2 border-black/10 px-4 py-2.5 text-sm focus:outline-none focus:border-black transition-colors bg-white"
+                      className="w-full md:flex-1 border-2 border-black/10 px-4 py-2.5 text-sm focus:outline-none focus:border-black transition-colors bg-white"
                     />
                     <button
                       onClick={handleSaveProfile}
                       disabled={savingProfile || (editEmail.trim() === user.email && editName.trim() === user.name)}
-                      className="px-5 py-2.5 bg-accent text-accent-foreground text-xs uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="w-full md:w-auto px-5 py-2.5 bg-accent text-accent-foreground text-xs uppercase tracking-widest font-semibold font-montserrat hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center md:justify-start gap-2 whitespace-nowrap"
                     >
                       <Save className="w-3.5 h-3.5" />
                       {savingProfile ? 'Saving…' : 'Save'}
@@ -583,25 +583,27 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
       {/* ── Reschedule Modal ────────────────────────────────── */}
       {isRescheduleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-white w-full max-w-3xl p-8 shadow-2xl overflow-y-auto max-h-[95vh]">
-            <div className="flex justify-between items-center mb-8">
-              <h3 className="text-2xl font-light text-black">Reschedule Appointment</h3>
-              <button onClick={() => setIsRescheduleModalOpen(false)} className="text-black/50 hover:text-black border-2 border-transparent hover:border-black/10 p-2 transition-all">
+          <div className="bg-white w-full max-w-3xl p-4 md:p-8 shadow-2xl overflow-y-auto max-h-[95vh]">
+            <div className="flex justify-between items-center mb-6 md:mb-8">
+              <h3 className="text-xl md:text-2xl font-light text-black">Reschedule Appointment</h3>
+              <button onClick={() => setIsRescheduleModalOpen(false)} className="text-black/50 hover:text-black border-2 border-transparent hover:border-black/10 p-2 transition-all flex-shrink-0">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            {/* Side-by-side: calendar left, slots right — mirrors booking Step 2 */}
-            <div className="grid md:grid-cols-2 gap-10">
+            {/* Side-by-side on desktop, stacked on mobile */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
               {/* Calendar */}
-              <div className="flex justify-center border border-black/10 p-8 bg-black/[0.01]">
-                <DayPicker
-                  mode="single"
-                  selected={rescheduleDate}
-                  onSelect={(date) => { setRescheduleDate(date); setRescheduleTime(null); }}
-                  disabled={{ before: new Date() }}
-                  className="p-0 m-0 w-full"
-                />
+              <div className="flex justify-center border border-black/10 p-4 md:p-8 bg-black/[0.01] overflow-x-auto">
+                <div className="w-full min-w-fit">
+                  <DayPicker
+                    mode="single"
+                    selected={rescheduleDate}
+                    onSelect={(date) => { setRescheduleDate(date); setRescheduleTime(null); }}
+                    disabled={{ before: new Date() }}
+                    className="p-0 m-0 w-full"
+                  />
+                </div>
               </div>
 
               {/* Time slots */}
@@ -609,7 +611,7 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                 <p className="text-xs font-medium uppercase tracking-widest text-black/40 flex items-center gap-2">
                   <Clock className="w-4 h-4" /> Available Times
                 </p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-2">
                   {!rescheduleDate ? (
                     <p className="col-span-2 text-xs text-black/40 py-4">Select a date first</p>
                   ) : loadingRescheduleSlots ? (
@@ -636,17 +638,17 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
                   )}
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex flex-col gap-2 pt-2">
                   <button
                     disabled={!rescheduleDate || !rescheduleTime || isRescheduling}
                     onClick={handleReschedule}
-                    className="flex-1 bg-accent text-accent-foreground py-4 text-sm uppercase tracking-wide font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    className="w-full bg-accent text-accent-foreground py-3 md:py-4 text-xs md:text-sm uppercase tracking-wide font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     {isRescheduling ? "Saving..." : "Save New Time"}
                   </button>
                   <button
                     onClick={() => setIsRescheduleModalOpen(false)}
-                    className="flex-1 border-2 border-black/10 text-black/50 py-4 text-sm uppercase tracking-wide font-medium hover:border-black/30 hover:text-black transition-all"
+                    className="w-full border-2 border-black/10 text-black/50 py-3 md:py-4 text-xs md:text-sm uppercase tracking-wide font-medium hover:border-black/30 hover:text-black transition-all"
                   >
                     Cancel
                   </button>

@@ -317,7 +317,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
       // ADDED: process.env.NEXT_PUBLIC_API_URL to ensure it hits Azure
       const checkoutRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/payments/create-checkout`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           amount: selectedService ? Number(selectedService.price) : 0,
           appointmentId,

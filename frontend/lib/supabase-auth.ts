@@ -174,7 +174,14 @@ export async function signInWithGoogle(redirectTo: string) {
   const supabase = getSupabase();
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo },
+    options: {
+      redirectTo,
+      // FIX: Force Google to show the account selector.
+      // This stops browsers from blocking the invisible auto-redirect loop.
+      queryParams: {
+        prompt: 'select_account',
+      },
+    },
   });
 
   if (error) {

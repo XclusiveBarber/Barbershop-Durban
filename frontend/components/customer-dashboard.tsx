@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, X, Edit2, LogOut, Plus, Home, User, Save, Settings } from 'lucide-react';
 import { format } from 'date-fns';
-import { DayPicker } from 'react-day-picker';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useAuth, type AuthUser } from '@/context/auth-context';
@@ -176,55 +176,6 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
 
   return (
     <div className="min-h-screen bg-white text-black">
-      <style>{`
-        .rdp {
-          --rdp-cell-size: 45px;
-          --rdp-accent-color: #000000;
-          --rdp-background-color: #f3f3f3;
-          margin: 0;
-          width: 100%;
-        }
-        /* Scales the cell size down perfectly on mobile to prevent squashing */
-        @media (max-width: 640px) {
-          .rdp {
-            --rdp-cell-size: 9.5vw;
-          }
-        }
-        .rdp-caption {
-          padding: 0.5rem 0 1.5rem;
-          font-size: 1.1rem;
-          font-weight: 600;
-        }
-        .rdp-head_cell {
-          font-size: 0.9rem;
-          font-weight: 600;
-          padding: 0.5rem 0;
-        }
-        .rdp-cell {
-          width: 100%;
-        }
-        .rdp-day {
-          font-size: 0.95rem;
-          border-radius: 4px;
-          transition: all 0.2s ease;
-        }
-        .rdp-day:hover:not(.rdp-day_disabled) {
-          background-color: var(--rdp-background-color);
-          cursor: pointer;
-        }
-        .rdp-day_selected,
-        .rdp-day_selected:focus-visible,
-        .rdp-day_selected:hover {
-          background-color: var(--rdp-accent-color) !important;
-          color: white !important;
-          font-weight: 600;
-        }
-        .rdp-day_disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
-      `}</style>
-
       {/* Header */}
       <header className="bg-black py-4">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
@@ -550,16 +501,14 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
 
-              <div className="flex justify-center border border-black/10 p-4 md:p-8 bg-black/[0.01] overflow-x-auto">
-                <div className="w-full min-w-fit">
-                  <DayPicker
-                    mode="single"
-                    selected={rescheduleDate}
-                    onSelect={(date) => { setRescheduleDate(date); setRescheduleTime(null); }}
-                    disabled={{ before: new Date() }}
-                    className="p-0 m-0 w-full"
-                  />
-                </div>
+              <div className="flex justify-center border border-black/10 p-2 bg-black/[0.01] overflow-x-auto">
+                <CalendarComponent
+                  mode="single"
+                  selected={rescheduleDate}
+                  onSelect={(date) => { setRescheduleDate(date); setRescheduleTime(null); }}
+                  disabled={{ before: new Date() }}
+                  className="w-full"
+                />
               </div>
 
               {/* Time slots */}

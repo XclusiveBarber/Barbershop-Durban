@@ -4,6 +4,7 @@ using BarberShopBookingSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 
@@ -309,9 +310,18 @@ namespace BarberShopBookingSystem.Controllers
             };
 
             _context.Appointments.Add(appointment);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException pg && pg.SqlState == "23505")
+            {
+                // Another concurrent request already claimed this barber+date+slot — the DB unique
+                // index (idx_appointments_no_double_book) rejected the duplicate insert.
+                return Conflict(new { error = "This time slot was just booked by someone else. Please try again." });
+            }
 
-            // 🚨 THE FIX: Save the single service to the bridge table so we don't break the DB schema
+            // Save the single service to the bridge table
             _context.AppointmentServices.Add(new AppointmentService
             {
                 AppointmentId = appointment.Id,

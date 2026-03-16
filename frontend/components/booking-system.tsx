@@ -335,7 +335,6 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         throw new Error(`Payment setup failed: ${errText}`);
       }
       const data = await checkoutRes.json();
-      console.log("Data returned from Azure:", data); // Helps us debug if it fails again!
       // Step 3: Extract URL safely (catches capitalization differences from C#)
       const finalRedirectUrl = data.redirectUrl || data.RedirectUrl || data.redirecturl || data.redirect_url || data.url;
       if (!finalRedirectUrl) {

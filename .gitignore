@@ -7,5 +7,15 @@ __v0_jsx-dev-runtime.ts
 node_modules/
 .next/
 .env*.local
+.env
 .DS_Store
 .vs/
+
+# .NET build output — never commit compiled binaries or secrets
+bin/
+obj/
+**/bin/
+**/obj/
+
+# Sensitive config (secrets should only be in environment variables)
+appsettings.Development.json

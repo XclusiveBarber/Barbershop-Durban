@@ -368,10 +368,18 @@ namespace BarberShopBookingSystem.Controllers
             return Ok(new { message = "Appointment cancelled." });
         }
 
-        // PATCH /api/appointments/{id} 
+        // PATCH /api/appointments/{id}
         [HttpPatch("{id}")]
         public async Task<IActionResult> UpdateAppointmentStatus(Guid id, [FromBody] UpdateStatusDto dto)
         {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null) return Unauthorized();
+            var userId = Guid.Parse(userIdClaim);
+
+            var userProfile = await _context.Profiles.FindAsync(userId);
+            if (userProfile == null || (userProfile.Role != "admin" && userProfile.Role != "barber"))
+                return Forbid();
+
             var appointment = await _context.Appointments.FindAsync(id);
             if (appointment == null) return NotFound();
 

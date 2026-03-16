@@ -8,6 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -135,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // cookie sync, and token-refresh cycles — which logs the user out
     // unexpectedly (e.g. after booking then navigating). Instead,
     // logout() clears state directly. localStorage is the source of truth.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (event === "TOKEN_REFRESHED" && session) {
         localStorage.setItem(TOKEN_KEY, session.access_token);
         setAccessToken(session.access_token);

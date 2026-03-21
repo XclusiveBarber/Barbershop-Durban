@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Mail, Lock, ChevronRight, AlertCircle, ChevronLeft, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth, type AuthUser } from "@/context/auth-context";
@@ -11,16 +12,11 @@ import {
   verifyOtp,
   getProfile,
   createProfile,
-  updateProfile,
   signInWithGoogle,
   signInWithPassword,
   signUpWithPassword,
 } from "@/lib/supabase-auth";
 
-// Derive a display name from an email address (part before @)
-function nameFromEmail(email: string) {
-  return email.split("@")[0].replace(/[._-]+/g, " ").trim() || email;
-}
 
 export interface OtpLoginFormProps {
   onComplete: () => void;
@@ -48,6 +44,7 @@ function GoogleIcon() {
 
 export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
   const { login } = useAuth();
+  const router = useRouter();
 
   const [step, setStep] = useState<Step>("method");
 
@@ -78,32 +75,32 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
   ) => {
     const profile = await getProfile(userId);
     const isNew = !profile || !profile.full_name;
-    const displayName = profile?.full_name ?? nameFromEmail(email);
-    const role = (profile?.role as AuthUser["role"]) ?? "customer";
 
-    // Silently create/update the profile — swallow RLS errors so login still completes
     if (isNew) {
+      // New user — ensure a profile row exists (without a name) then redirect
+      // to the complete-profile page so they can enter their real name.
       try {
-        if (profile) {
-          await updateProfile(userId, { name: displayName, email });
-        } else {
-          await createProfile({ id: userId, email, name: displayName, role: "customer" });
+        if (!profile) {
+          await createProfile({ id: userId, email, name: "", role: "customer" });
         }
       } catch {
-        // RLS may block this for some auth methods — proceed anyway
+        // RLS may block this — the complete-profile page will retry
       }
+      // Work out where to send the user after they complete their profile.
+      const params = new URLSearchParams(window.location.search);
+      const destination =
+        params.get("returnTo") ??
+        (window.location.pathname + window.location.hash) ||
+        "/dashboard";
+      router.push(`/auth/complete-profile?returnTo=${encodeURIComponent(destination)}`);
+      return;
     }
 
+    const displayName = profile.full_name as string;
+    const role = (profile.role as AuthUser["role"]) ?? "customer";
     const userData: AuthUser = { id: userId, email, name: displayName, role };
     login(userData, token ?? undefined);
-    if (isNew) {
-      toast.success("Welcome to Xclusive Barber!", {
-        description: "Head to your profile to set your name and surname.",
-        duration: 8000,
-      });
-    } else {
-      toast.success(`Welcome back, ${displayName}!`);
-    }
+    toast.success(`Welcome back, ${displayName}!`);
     onComplete();
   };
 

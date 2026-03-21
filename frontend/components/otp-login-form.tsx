@@ -161,6 +161,7 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
           setOtpEmail(pwEmail.trim());
           setPwPassword("");
           setPwConfirm("");
+          toast.success("Account created! Check your email for the confirmation link.");
           setStep("check-email");
           return;
         }

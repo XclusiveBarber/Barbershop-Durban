@@ -90,8 +90,7 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
       const params = new URLSearchParams(window.location.search);
       const destination =
         params.get("returnTo") ??
-        (window.location.pathname + window.location.hash) ||
-        "/dashboard";
+        (window.location.pathname + window.location.hash || "/dashboard");
       router.push(`/auth/complete-profile?returnTo=${encodeURIComponent(destination)}`);
       return;
     }

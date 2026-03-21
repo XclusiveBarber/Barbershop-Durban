@@ -36,6 +36,7 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
   const [editName, setEditName] = useState(user.name || '');
   const [savingProfile, setSavingProfile] = useState(false);
 
+
   // Reschedule state
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isRescheduleWarningOpen, setIsRescheduleWarningOpen] = useState(false);

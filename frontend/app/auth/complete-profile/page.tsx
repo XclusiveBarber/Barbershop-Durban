@@ -59,7 +59,6 @@ function CompleteProfileContent() {
       const profile = await getProfile(authUser.id);
 
       if (profile) {
-        // Profile row was auto-created by Supabase trigger — update name and ensure email is saved
         await updateProfile(authUser.id, { name: name.trim(), email: authUser.email ?? "" });
       } else {
         await createProfile({
@@ -132,7 +131,7 @@ function CompleteProfileContent() {
                 type="text"
                 value={name}
                 onChange={(e) => { setName(e.target.value); setError(null); }}
-                placeholder="e.g. Thabo"
+                placeholder="e.g. Thabo Dlamini"
                 className="w-full pl-12 pr-4 py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
                 onKeyDown={(e) => e.key === "Enter" && !loading && handleSaveName()}
                 disabled={loading}

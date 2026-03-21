@@ -30,22 +30,16 @@ function CompleteProfileContent() {
   const returnTo = searchParams.get("returnTo") ?? "/dashboard";
   const { login } = useAuth();
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSaveName = async () => {
-    if (!firstName.trim()) {
-      setError("Please enter your first name");
-      return;
-    }
-    if (!lastName.trim()) {
-      setError("Please enter your last name");
+    if (!name.trim()) {
+      setError("Please enter your name");
       return;
     }
 
-    const fullName = `${firstName.trim()} ${lastName.trim()}`;
     setError(null);
     setLoading(true);
 
@@ -65,12 +59,12 @@ function CompleteProfileContent() {
       const profile = await getProfile(authUser.id);
 
       if (profile) {
-        await updateProfile(authUser.id, { name: fullName, email: authUser.email ?? "" });
+        await updateProfile(authUser.id, { name: name.trim(), email: authUser.email ?? "" });
       } else {
         await createProfile({
           id: authUser.id,
           email: authUser.email ?? "",
-          name: fullName,
+          name: name.trim(),
           role: "customer",
         });
       }
@@ -78,12 +72,12 @@ function CompleteProfileContent() {
       const userData: AuthUser = {
         id: authUser.id,
         email: authUser.email ?? "",
-        name: fullName,
+        name: name.trim(),
         role: (profile?.role as AuthUser["role"]) ?? "customer",
       };
 
       login(userData, token);
-      toast.success(`Welcome, ${firstName.trim()}!`);
+      toast.success(`Welcome, ${name.trim()}!`);
       router.push(returnTo);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to save name";
@@ -116,9 +110,9 @@ function CompleteProfileContent() {
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md space-y-6">
           <div className="text-center mb-10">
-            <h3 className="text-3xl font-light text-black mb-3">Complete Your Profile</h3>
+            <h3 className="text-3xl font-light text-black mb-3">What&apos;s Your Name?</h3>
             <p className="text-sm text-black/50 max-w-sm mx-auto leading-relaxed">
-              Enter your name and surname so we know who to expect.
+              One last thing — so we know who to expect.
             </p>
           </div>
 
@@ -130,40 +124,25 @@ function CompleteProfileContent() {
           )}
 
           <div className="space-y-2">
-            <label className="text-xs uppercase tracking-widest text-black/40 font-medium">First Name</label>
+            <label className="text-xs uppercase tracking-widest text-black/40 font-medium">Your Name</label>
             <div className="relative">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
               <input
                 type="text"
-                value={firstName}
-                onChange={(e) => { setFirstName(e.target.value); setError(null); }}
-                placeholder="e.g. Thabo"
+                value={name}
+                onChange={(e) => { setName(e.target.value); setError(null); }}
+                placeholder="e.g. Thabo Dlamini"
                 className="w-full pl-12 pr-4 py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
+                onKeyDown={(e) => e.key === "Enter" && !loading && handleSaveName()}
                 disabled={loading}
                 autoFocus
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs uppercase tracking-widest text-black/40 font-medium">Last Name</label>
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => { setLastName(e.target.value); setError(null); }}
-                placeholder="e.g. Dlamini"
-                className="w-full pl-12 pr-4 py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
-                onKeyDown={(e) => e.key === "Enter" && !loading && handleSaveName()}
-                disabled={loading}
-              />
-            </div>
-          </div>
-
           <button
             onClick={handleSaveName}
-            disabled={!firstName.trim() || !lastName.trim() || loading}
+            disabled={!name.trim() || loading}
             className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all flex items-center justify-center gap-2"
           >
             {loading ? "Saving..." : "Continue"} <ChevronRight className="w-4 h-4" />

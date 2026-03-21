@@ -24,7 +24,7 @@ export interface OtpLoginFormProps {
   onBackAction?: () => void;
 }
 
-type Step = "method" | "otp-email" | "otp-code";
+type Step = "method" | "otp-email" | "otp-code" | "check-email";
 type PasswordMode = "signin" | "signup";
 
 // ─── Google Icon ───────────────────────────────────────────────────────────────
@@ -155,15 +155,13 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
         if (!authUser) throw new Error("Account creation failed — please try again");
 
         // If there is no session, email confirmation is required.
-        // Send an OTP login code (type: 'email') so the user can verify
-        // using the existing code-entry screen instead of a dead-end link.
+        // Supabase already sent a confirmation email — don't send another
+        // (that triggers the "you can only request this after N seconds" rate limit).
         if (!data.session) {
-          await sendOtp({ email: pwEmail.trim() });
           setOtpEmail(pwEmail.trim());
           setPwPassword("");
           setPwConfirm("");
-          toast.success("Account created! Enter the verification code we just sent to your email.");
-          setStep("otp-code");
+          setStep("check-email");
           return;
         }
 
@@ -490,6 +488,40 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
                 className="w-full text-xs text-black/40 hover:text-black transition-colors py-2"
               >
                 ← Back to sign in options
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Check email (after password signup) ─────────────────────────── */}
+        {step === "check-email" && (
+          <motion.div
+            key="check-email"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            <FormHeader
+              title="Check Your Email"
+              subtitle={
+                <>
+                  We sent a confirmation link to <strong>{otpEmail}</strong>.
+                  Click the link in that email to activate your account.
+                </>
+              }
+            />
+
+            <div className="space-y-4">
+              <p className="text-sm text-black/50 text-center">
+                Didn&apos;t receive it? Check your spam folder, or go back and try again.
+              </p>
+              <button
+                onClick={() => { setStep("method"); clearError(); }}
+                className="w-full text-xs text-black/40 hover:text-black transition-colors py-2"
+              >
+                ← Back to sign in
               </button>
             </div>
           </motion.div>

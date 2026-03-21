@@ -96,7 +96,14 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
 
     const userData: AuthUser = { id: userId, email, name: displayName, role };
     login(userData, token ?? undefined);
-    toast.success(isNew ? `Welcome, ${displayName}!` : `Welcome back, ${displayName}!`);
+    if (isNew) {
+      toast.success("Welcome to Xclusive Barber!", {
+        description: "Head to your profile to set your name and surname.",
+        duration: 8000,
+      });
+    } else {
+      toast.success(`Welcome back, ${displayName}!`);
+    }
     onComplete();
   };
 

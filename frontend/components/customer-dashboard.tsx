@@ -36,6 +36,11 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
   const [editName, setEditName] = useState(user.name || '');
   const [savingProfile, setSavingProfile] = useState(false);
 
+  // Detect if name was auto-derived from email (user hasn't set a real name yet)
+  const emailDerivedName = user.email.split('@')[0].replace(/[._-]+/g, ' ').trim();
+  const nameIsEmailDerived = user.name.trim().toLowerCase() === emailDerivedName.toLowerCase();
+  const [profileBannerDismissed, setProfileBannerDismissed] = useState(false);
+
   // Reschedule state
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isRescheduleWarningOpen, setIsRescheduleWarningOpen] = useState(false);
@@ -158,6 +163,7 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
     try {
       await updateProfile(user.id, { name: trimmedName });
       updateUser({ name: trimmedName });
+      setProfileBannerDismissed(true);
       toast.success('Profile updated');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update profile');
@@ -227,6 +233,34 @@ export function CustomerDashboard({ user, initialTab }: { user: AuthUser; initia
             )}
           </div>
         </div>
+
+        {/* Profile completion banner */}
+        {nameIsEmailDerived && !profileBannerDismissed && (
+          <div className="mb-8 border-2 border-amber-300 bg-amber-50 px-5 py-4 flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <User className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-amber-900">Complete your profile</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Please add your name and surname so we can personalise your experience.{' '}
+                  <button
+                    onClick={() => setActiveTab('profile')}
+                    className="underline underline-offset-2 font-semibold hover:text-amber-900 transition-colors"
+                  >
+                    Update now
+                  </button>
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setProfileBannerDismissed(true)}
+              className="text-amber-500 hover:text-amber-900 transition-colors flex-shrink-0 mt-0.5"
+              aria-label="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-0 border-b-2 border-black/10 mb-10">

@@ -11,7 +11,7 @@ export function LocationMap() {
     postalCode: "4001",
     country: "South Africa",
     phone: "068 425 0060",
-    email: "ebarbershop998@gmail.com",
+    email: "info@xclusivebarber.co.za",
     lat: -29.8587,
     lng: 31.0218,
   };

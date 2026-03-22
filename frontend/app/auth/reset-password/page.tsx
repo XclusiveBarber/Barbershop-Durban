@@ -15,6 +15,7 @@ import { Lock, ChevronRight, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import type { AuthChangeEvent } from "@supabase/supabase-js";
 
 export default function ResetPasswordPage() {
   return (
@@ -41,7 +42,7 @@ function ResetPasswordContent() {
 
     // Supabase fires PASSWORD_RECOVERY when it detects a valid recovery token
     // in the URL fragment. If the token is expired/invalid it fires SIGNED_OUT.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent) => {
       if (event === "PASSWORD_RECOVERY") {
         setPageState("ready");
       } else if (event === "SIGNED_OUT") {
@@ -51,9 +52,10 @@ function ResetPasswordContent() {
 
     // Fallback: if the user already has a session (e.g., tab refresh), allow them through.
     // Also handles the case where the event fired before we subscribed.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setPageState((s) => s === "loading" ? "ready" : s);
-    });
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) setPageState((s) => s === "loading" ? "ready" : s);
+    })();
 
     // Safety net: if neither event fires within 4 seconds, treat the link as expired.
     const timeout = setTimeout(() => {

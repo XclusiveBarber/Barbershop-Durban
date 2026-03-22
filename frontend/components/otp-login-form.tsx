@@ -179,6 +179,16 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
         const token = data.session?.access_token ?? null;
         if (!authUser) throw new Error("Account creation failed — please try again");
 
+        // Supabase silently returns a user with empty identities when the email
+        // already exists (it doesn't error to avoid leaking email existence).
+        // Detect this and prompt the user to sign in instead.
+        if (authUser.identities?.length === 0) {
+          setPwMode("signin");
+          setError("An account with this email already exists. Please sign in instead.");
+          toast.error("Email already registered — switch to Sign In.");
+          return;
+        }
+
         // If there is no session, email confirmation is required.
         // Supabase already sent a confirmation email — don't send another
         // (that triggers the "you can only request this after N seconds" rate limit).

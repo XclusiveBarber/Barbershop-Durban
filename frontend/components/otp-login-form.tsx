@@ -132,6 +132,14 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     setError(null);
+
+    // Safety net: if the redirect doesn't fire within 10s (e.g., popup blocked),
+    // reset the loading state so the user isn't stuck.
+    const timeout = setTimeout(() => {
+      setGoogleLoading(false);
+      setError("Couldn't redirect to Google. Please try again or use email instead.");
+    }, 10000);
+
     try {
       // Dynamically return to the current page URL (e.g., /#book) instead of forcing /dashboard
       const currentPath = window.location.pathname + window.location.hash || "/#book";
@@ -139,8 +147,10 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
 
       const callbackUrl = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnPath)}`;
       await signInWithGoogle(callbackUrl);
-      // Browser will redirect — no further action needed here
+      // Browser will redirect — clearTimeout so the safety net doesn't fire
+      clearTimeout(timeout);
     } catch (err) {
+      clearTimeout(timeout);
       const message = err instanceof Error ? err.message : "Failed to sign in with Google";
       setError(message);
       toast.error(message);
@@ -178,6 +188,16 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
         const authUser = data.user;
         const token = data.session?.access_token ?? null;
         if (!authUser) throw new Error("Account creation failed — please try again");
+
+        // Supabase silently returns a user with empty identities when the email
+        // already exists (it doesn't error to avoid leaking email existence).
+        // Detect this and prompt the user to sign in instead.
+        if (authUser.identities?.length === 0) {
+          setPwMode("signin");
+          setError("An account with this email already exists. Please sign in instead.");
+          toast.error("Email already registered — switch to Sign In.");
+          return;
+        }
 
         // If there is no session, email confirmation is required.
         // Supabase already sent a confirmation email — don't send another

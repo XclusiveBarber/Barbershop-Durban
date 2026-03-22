@@ -4,10 +4,12 @@
  * Reset Password Page
  *
  * User lands here after clicking the reset link in their email.
- * The reset token is in the URL (Supabase automatically handles it).
+ * Supabase handles the recovery token in the URL fragment and fires
+ * a PASSWORD_RECOVERY auth event — we wait for that before showing the form.
+ * If no recovery event arrives (expired/invalid link), we show an error state.
  */
 
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, ChevronRight, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Toaster, toast } from "sonner";
@@ -22,14 +24,47 @@ export default function ResetPasswordPage() {
   );
 }
 
+type PageState = "loading" | "ready" | "expired";
+
 function ResetPasswordContent() {
   const router = useRouter();
+  const [pageState, setPageState] = useState<PageState>("loading");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+
+    // Supabase fires PASSWORD_RECOVERY when it detects a valid recovery token
+    // in the URL fragment. If the token is expired/invalid it fires SIGNED_OUT.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setPageState("ready");
+      } else if (event === "SIGNED_OUT") {
+        setPageState("expired");
+      }
+    });
+
+    // Fallback: if the user already has a session (e.g., tab refresh), allow them through.
+    // Also handles the case where the event fired before we subscribed.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setPageState((s) => s === "loading" ? "ready" : s);
+    });
+
+    // Safety net: if neither event fires within 4 seconds, treat the link as expired.
+    const timeout = setTimeout(() => {
+      setPageState((s) => s === "loading" ? "expired" : s);
+    }, 4000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, []);
 
   const handleResetPassword = async () => {
     if (!password || password.length < 6) {
@@ -46,9 +81,7 @@ function ResetPasswordContent() {
 
     try {
       const supabase = createSupabaseBrowserClient();
-      const { error: updateError } = await supabase.auth.updateUser({
-        password,
-      });
+      const { error: updateError } = await supabase.auth.updateUser({ password });
 
       if (updateError) {
         throw new Error(updateError.message || "Failed to reset password");
@@ -65,25 +98,67 @@ function ResetPasswordContent() {
     }
   };
 
+  const Nav = () => (
+    <nav className="bg-black py-4 flex-shrink-0">
+      <div className="max-w-7xl mx-auto px-6 flex items-center">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="w-10 h-10 flex items-center justify-center">
+            <img src="/logo.png" alt="Xclusive Barber" className="w-full h-full object-contain" />
+          </div>
+          <span className="text-xl md:text-2xl font-semibold tracking-tight text-white font-montserrat">
+            XCLUSIVE BARBER
+          </span>
+        </Link>
+      </div>
+    </nav>
+  );
+
+  if (pageState === "loading") {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <Nav />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-black/40">Verifying reset link…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (pageState === "expired") {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <Toaster position="top-center" expand richColors />
+        <Nav />
+        <div className="flex-1 flex items-center justify-center px-6 py-12">
+          <div className="w-full max-w-md space-y-6 text-center">
+            <div className="space-y-3">
+              <h3 className="text-3xl font-light text-black">Link Expired</h3>
+              <p className="text-sm text-black/50 leading-relaxed">
+                This password reset link has expired or already been used. Reset links are valid for 1 hour.
+              </p>
+            </div>
+            <Link
+              href="/auth/request-reset"
+              className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-6 py-3 font-medium text-sm uppercase tracking-wide hover:opacity-90 transition-all"
+            >
+              Request a new link <ChevronRight className="w-4 h-4" />
+            </Link>
+            <div className="pt-2">
+              <Link href="/login" className="text-xs text-black/50 hover:text-black transition-colors underline underline-offset-2">
+                ← Back to sign in
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Toaster position="top-center" expand richColors />
+      <Nav />
 
-      {/* Header */}
-      <nav className="bg-black py-4 flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-6 flex items-center">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 flex items-center justify-center">
-              <img src="/logo.png" alt="Xclusive Barber" className="w-full h-full object-contain" />
-            </div>
-            <span className="text-xl md:text-2xl font-semibold tracking-tight text-white font-montserrat">
-              XCLUSIVE BARBER
-            </span>
-          </Link>
-        </div>
-      </nav>
-
-      {/* Main */}
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md space-y-6">
           <div className="text-center mb-10">
@@ -100,7 +175,6 @@ function ResetPasswordContent() {
             </div>
           )}
 
-          {/* New Password */}
           <div className="space-y-2">
             <label className="text-xs uppercase tracking-widest text-black/40 font-medium">New Password</label>
             <div className="relative">
@@ -124,7 +198,6 @@ function ResetPasswordContent() {
             </div>
           </div>
 
-          {/* Confirm Password */}
           <div className="space-y-2">
             <label className="text-xs uppercase tracking-widest text-black/40 font-medium">Confirm Password</label>
             <div className="relative">

@@ -121,6 +121,7 @@ const logoText = {
 };
 
 const content = {
+  backgroundColor: '#1a1a1a',
   padding: '40px',
 };
 
@@ -181,6 +182,7 @@ const noteHighlight = {
 };
 
 const footer = {
+  backgroundColor: '#1a1a1a',
   borderTop: '1px solid #333333',
   padding: '24px 40px',
   textAlign: 'center' as const,

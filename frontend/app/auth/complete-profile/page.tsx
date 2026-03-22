@@ -78,9 +78,20 @@ function CompleteProfileContent() {
 
       login(userData, token);
       toast.success(`Welcome, ${name.trim()}!`);
-      router.push(returnTo);
+
+      // Use setTimeout to ensure state updates are flushed before navigating.
+      // This fixes a race condition where dashboard checks auth before state is ready.
+      // Timeout of 100ms gives React time to flush batched state updates.
+      setTimeout(() => {
+        console.log("Navigating to:", returnTo);
+        router.push(returnTo);
+      }, 100);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save name";
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Failed to save name. Please check your connection and try again.";
+      console.error("Complete profile error:", { error: err, message });
       setError(message);
       toast.error(message);
     } finally {

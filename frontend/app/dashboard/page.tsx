@@ -16,9 +16,16 @@ function DashboardContent() {
   const tabParam = searchParams.get('tab') as 'appointments' | 'profile' | null;
 
   useEffect(() => {
-    // Wait for auth hydration before deciding to redirect
+    // Wait for auth hydration before deciding to redirect.
+    // If user is not logged in, send them back to login.
+    // Note: isLoading includes both initial hydration and localStorage restoration,
+    // so we wait for that to complete before redirecting unauthenticated users.
     if (!isLoading && !isLoggedIn) {
-      router.push("/login?returnTo=/dashboard");
+      // Add a small delay to handle state update race conditions
+      const timeoutId = setTimeout(() => {
+        router.push("/login?returnTo=/dashboard");
+      }, 50);
+      return () => clearTimeout(timeoutId);
     }
   }, [isLoading, isLoggedIn, router]);
 

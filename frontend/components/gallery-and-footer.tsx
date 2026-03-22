@@ -162,6 +162,16 @@ export function Footer() {
           </div>
         </div>
       </div>
+      <div className="text-center py-2">
+        <a
+          href="https://lmwebdesign.co.za"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] text-white/20 hover:text-white/40 transition-colors tracking-wide font-poppins"
+        >
+          created by lmwebdesign
+        </a>
+      </div>
     </footer>
   );
 }

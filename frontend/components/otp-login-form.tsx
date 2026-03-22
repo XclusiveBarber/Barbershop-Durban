@@ -132,6 +132,14 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     setError(null);
+
+    // Safety net: if the redirect doesn't fire within 10s (e.g., popup blocked),
+    // reset the loading state so the user isn't stuck.
+    const timeout = setTimeout(() => {
+      setGoogleLoading(false);
+      setError("Couldn't redirect to Google. Please try again or use email instead.");
+    }, 10000);
+
     try {
       // Dynamically return to the current page URL (e.g., /#book) instead of forcing /dashboard
       const currentPath = window.location.pathname + window.location.hash || "/#book";
@@ -139,8 +147,10 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
 
       const callbackUrl = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnPath)}`;
       await signInWithGoogle(callbackUrl);
-      // Browser will redirect — no further action needed here
+      // Browser will redirect — clearTimeout so the safety net doesn't fire
+      clearTimeout(timeout);
     } catch (err) {
+      clearTimeout(timeout);
       const message = err instanceof Error ? err.message : "Failed to sign in with Google";
       setError(message);
       toast.error(message);

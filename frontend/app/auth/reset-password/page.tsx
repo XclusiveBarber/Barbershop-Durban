@@ -15,6 +15,7 @@ import { Lock, ChevronRight, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import type { AuthChangeEvent } from "@supabase/supabase-js";
 
 export default function ResetPasswordPage() {
   return (
@@ -41,7 +42,7 @@ function ResetPasswordContent() {
 
     // Supabase fires PASSWORD_RECOVERY when it detects a valid recovery token
     // in the URL fragment. If the token is expired/invalid it fires SIGNED_OUT.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent) => {
       if (event === "PASSWORD_RECOVERY") {
         setPageState("ready");
       } else if (event === "SIGNED_OUT") {

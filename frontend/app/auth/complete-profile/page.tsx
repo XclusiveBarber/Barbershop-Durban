@@ -48,8 +48,8 @@ function CompleteProfileContent() {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session?.user) {
-        setError("Session expired — please sign in again");
-        setLoading(false);
+        toast.error("Session expired — please sign in again");
+        router.push(`/login?returnTo=${encodeURIComponent(returnTo)}`);
         return;
       }
 

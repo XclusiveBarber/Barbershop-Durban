@@ -10,6 +10,8 @@ import { useAuth, type AuthUser } from "@/context/auth-context";
 import {
   sendOtp,
   verifyOtp,
+  verifySignupOtp,
+  resendSignupConfirmation,
   getProfile,
   createProfile,
   signInWithGoogle,
@@ -65,7 +67,20 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Resend cooldown: seconds remaining (0 = can resend)
+  const [resendCooldown, setResendCooldown] = useState(0);
+
   const clearError = () => setError(null);
+
+  const startResendCooldown = () => {
+    setResendCooldown(60);
+    const interval = setInterval(() => {
+      setResendCooldown((s) => {
+        if (s <= 1) { clearInterval(interval); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+  };
 
   // ── After auth: check profile and complete login ─────────────────────────
   const handlePostAuth = async (
@@ -161,7 +176,9 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
           setOtpEmail(pwEmail.trim());
           setPwPassword("");
           setPwConfirm("");
-          toast.success("Account created! Check your email for the confirmation link.");
+          setOtp("");
+          startResendCooldown();
+          toast.success("Account created! Enter the code from your confirmation email.");
           setStep("check-email");
           return;
         }
@@ -190,9 +207,69 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
       await sendOtp({ email: otpEmail.trim() });
       setStep("otp-code");
       setOtp("");
+      startResendCooldown();
       toast.success("Code sent! Check your email.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to send code";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── OTP: Resend login code ─────────────────────────────────────────────────
+  const handleResendOtp = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await sendOtp({ email: otpEmail.trim() });
+      setOtp("");
+      startResendCooldown();
+      toast.success("New code sent! Check your email.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to resend code";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Signup confirmation: Verify code ──────────────────────────────────────
+  const handleVerifySignupCode = async () => {
+    if (!otp.trim() || otp.length < 6) {
+      setError("Please enter the 6-digit code from your email");
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      const data = await verifySignupOtp({ email: otpEmail.trim(), token: otp.trim() });
+      const authUser = data.user;
+      const token = data.session?.access_token ?? null;
+      if (!authUser) throw new Error("Verification failed — please try again");
+      await handlePostAuth(authUser.id, authUser.email ?? otpEmail.trim(), token);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Invalid or expired code";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Signup confirmation: Resend confirmation email ────────────────────────
+  const handleResendSignupConfirmation = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await resendSignupConfirmation(otpEmail.trim());
+      setOtp("");
+      startResendCooldown();
+      toast.success("Confirmation email resent! Check your inbox.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to resend confirmation";
       setError(message);
       toast.error(message);
     } finally {
@@ -494,7 +571,7 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
           </motion.div>
         )}
 
-        {/* ── Check email (after password signup) ─────────────────────────── */}
+        {/* ── Check email (after password signup) — enter confirmation code ── */}
         {step === "check-email" && (
           <motion.div
             key="check-email"
@@ -505,21 +582,59 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
             className="space-y-6"
           >
             <FormHeader
-              title="Check Your Email"
+              title="Confirm Your Email"
               subtitle={
                 <>
-                  We sent a confirmation link to <strong>{otpEmail}</strong>.
-                  Click the link in that email to activate your account.
+                  We sent a 6-digit code to <strong>{otpEmail}</strong>.
+                  Enter it below to activate your account.
                 </>
               }
             />
 
             <div className="space-y-4">
-              <p className="text-sm text-black/50 text-center">
-                Didn&apos;t receive it? Check your spam folder, or go back and try again.
-              </p>
+              <ErrorBox />
+
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-widest text-black/40 font-medium">
+                  Confirmation Code
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={otp}
+                  onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); clearError(); }}
+                  placeholder="000000"
+                  className="w-full text-center text-3xl tracking-[0.3em] py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
+                  onKeyDown={(e) => e.key === "Enter" && !loading && handleVerifySignupCode()}
+                  disabled={loading}
+                  autoFocus
+                />
+              </div>
+
               <button
-                onClick={() => { setStep("method"); clearError(); }}
+                onClick={handleVerifySignupCode}
+                disabled={otp.length < 6 || loading}
+                className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              >
+                {loading ? "Verifying..." : "Confirm Account"} <ChevronRight className="w-4 h-4" />
+              </button>
+
+              <div className="text-center">
+                {resendCooldown > 0 ? (
+                  <p className="text-xs text-black/30">Resend available in {resendCooldown}s</p>
+                ) : (
+                  <button
+                    onClick={handleResendSignupConfirmation}
+                    disabled={loading}
+                    className="text-xs text-black/40 hover:text-black transition-colors underline underline-offset-2 disabled:opacity-40"
+                  >
+                    Didn&apos;t receive it? Resend code
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={() => { setStep("method"); clearError(); setOtp(""); }}
                 className="w-full text-xs text-black/40 hover:text-black transition-colors py-2"
               >
                 ← Back to sign in
@@ -570,6 +685,20 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
               >
                 {loading ? "Verifying..." : "Verify Code"} <ChevronRight className="w-4 h-4" />
               </button>
+
+              <div className="text-center">
+                {resendCooldown > 0 ? (
+                  <p className="text-xs text-black/30">Resend available in {resendCooldown}s</p>
+                ) : (
+                  <button
+                    onClick={handleResendOtp}
+                    disabled={loading}
+                    className="text-xs text-black/40 hover:text-black transition-colors underline underline-offset-2 disabled:opacity-40"
+                  >
+                    Didn&apos;t receive it? Resend code
+                  </button>
+                )}
+              </div>
 
               <button
                 onClick={() => { setStep("otp-email"); clearError(); setOtp(""); }}

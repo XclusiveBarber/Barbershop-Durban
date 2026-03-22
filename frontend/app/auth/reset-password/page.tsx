@@ -51,8 +51,8 @@ function ResetPasswordContent() {
 
     // Fallback: if the user already has a session (e.g., tab refresh), allow them through.
     // Also handles the case where the event fired before we subscribed.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setPageState((s) => s === "loading" ? "ready" : s);
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) setPageState((s) => s === "loading" ? "ready" : s);
     });
 
     // Safety net: if neither event fires within 4 seconds, treat the link as expired.

@@ -5,6 +5,7 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Preview,
   Row,
   Column,
@@ -33,16 +34,24 @@ export function BookingConfirmationEmail({
       <Preview>Booking confirmed — {date} at {time} with {barberName}.</Preview>
       <Body style={main}>
         <Container style={container}>
+
+          {/* Header */}
           <Section style={header}>
-            <Heading style={logo}>Xclusive Barber</Heading>
+            <Img
+              src="https://xclusivebarber.co.za/logo.png"
+              alt="Xclusive Barber"
+              width="48"
+              height="48"
+              style={logoImg}
+            />
+            <Text style={logoText}>XCLUSIVE BARBER</Text>
           </Section>
 
+          {/* Content */}
           <Section style={content}>
-            <Heading as="h2" style={heading}>
-              Booking Confirmed!
-            </Heading>
+            <Heading as="h2" style={heading}>Booking Confirmed</Heading>
             <Text style={paragraph}>
-              Your appointment has been booked. Here are the details:
+              Your appointment has been booked. Here are your details:
             </Text>
 
             <Section style={detailsBox}>
@@ -71,19 +80,17 @@ export function BookingConfirmationEmail({
 
             <Text style={paragraph}>
               Please arrive on time. Cancellations within 2 hours of your
-              appointment are not permitted per our policy.
+              appointment cannot be accepted per our policy.
             </Text>
-            <Text style={paragraph}>We look forward to seeing you!</Text>
+            <Text style={paragraph}>We look forward to seeing you.</Text>
           </Section>
 
-          <Hr style={divider} />
-
+          {/* Footer */}
           <Section style={footer}>
-            <Text style={footerText}>
-              <strong>The Xclusive Barber Team</strong>
-            </Text>
-            <Text style={footerMuted}>xclusivebarber.co.za</Text>
+            <Text style={footerText}>Davenport — All types of XCLUSIVE haircuts &amp; grooming.</Text>
+            <Text style={footerText}>&copy; 2026 Xclusive Barber. xclusivebarber.co.za</Text>
           </Section>
+
         </Container>
       </Body>
     </Html>
@@ -91,110 +98,109 @@ export function BookingConfirmationEmail({
 }
 
 const main = {
-  backgroundColor: '#f6f6f6',
-  fontFamily: 'Arial, sans-serif',
+  backgroundColor: '#000000',
+  fontFamily: "'Montserrat', Arial, sans-serif",
+  margin: '0',
+  padding: '0',
 };
 
 const container = {
-  margin: '0 auto',
-  padding: '20px 0',
   maxWidth: '600px',
+  margin: '0 auto',
+  backgroundColor: '#1a1a1a',
+  border: '1px solid #333333',
 };
 
 const header = {
-  backgroundColor: '#1a1a1a',
-  borderRadius: '8px 8px 0 0',
-  padding: '24px',
+  backgroundColor: '#000000',
+  padding: '32px 20px',
   textAlign: 'center' as const,
 };
 
-const logo = {
+const logoImg = {
+  display: 'block',
+  margin: '0 auto 12px',
+};
+
+const logoText = {
   color: '#ffffff',
-  fontSize: '24px',
-  fontWeight: 'bold',
+  fontSize: '22px',
+  fontWeight: '800',
+  letterSpacing: '3px',
+  textTransform: 'uppercase' as const,
   margin: '0',
 };
 
 const content = {
-  backgroundColor: '#ffffff',
-  padding: '32px',
+  padding: '40px',
 };
 
 const heading = {
-  color: '#1a1a1a',
+  color: '#ffffff',
   fontSize: '22px',
-  fontWeight: 'bold',
-  marginBottom: '16px',
+  fontWeight: '600',
+  margin: '0 0 20px',
 };
 
 const paragraph = {
-  color: '#444444',
+  color: '#aaaaaa',
   fontSize: '15px',
   lineHeight: '1.6',
-  margin: '0 0 12px',
+  margin: '0 0 14px',
 };
 
 const detailsBox = {
-  backgroundColor: '#f9f9f9',
-  borderRadius: '8px',
-  padding: '16px 20px',
-  margin: '20px 0',
+  backgroundColor: '#000000',
+  border: '1px solid #333333',
+  padding: '20px 24px',
+  margin: '24px 0',
 };
 
 const detailRow = {
-  marginBottom: '8px',
+  marginBottom: '10px',
 };
 
 const detailLabel = {
-  color: '#888888',
-  fontSize: '13px',
+  color: '#9b1c1c',
+  fontSize: '11px',
   fontWeight: 'bold' as const,
   textTransform: 'uppercase' as const,
+  letterSpacing: '1px',
   width: '40%',
 };
 
 const detailValue = {
-  color: '#1a1a1a',
+  color: '#cccccc',
   fontSize: '14px',
 };
 
 const detailDivider = {
-  borderColor: '#e6e6e6',
-  margin: '12px 0',
+  borderColor: '#333333',
+  margin: '14px 0',
 };
 
 const totalLabel = {
-  color: '#1a1a1a',
-  fontSize: '15px',
+  color: '#ffffff',
+  fontSize: '14px',
   fontWeight: 'bold' as const,
   width: '40%',
 };
 
 const totalValue = {
-  color: '#1a1a1a',
+  color: '#9b1c1c',
   fontSize: '16px',
-  fontWeight: 'bold' as const,
-};
-
-const divider = {
-  borderColor: '#e6e6e6',
-  margin: '0',
+  fontWeight: '800' as const,
+  letterSpacing: '1px',
 };
 
 const footer = {
-  backgroundColor: '#ffffff',
-  borderRadius: '0 0 8px 8px',
-  padding: '24px 32px',
+  borderTop: '1px solid #333333',
+  padding: '24px 40px',
+  textAlign: 'center' as const,
 };
 
 const footerText = {
-  color: '#444444',
-  fontSize: '14px',
-  margin: '0 0 4px',
-};
-
-const footerMuted = {
-  color: '#999999',
-  fontSize: '13px',
-  margin: '4px 0 0',
+  color: '#666666',
+  fontSize: '12px',
+  margin: '4px 0',
 };

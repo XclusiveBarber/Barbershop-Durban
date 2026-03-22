@@ -10,6 +10,8 @@ import { useAuth, type AuthUser } from "@/context/auth-context";
 import {
   sendOtp,
   verifyOtp,
+  verifySignupOtp,
+  resendSignupConfirmation,
   getProfile,
   createProfile,
   signInWithGoogle,
@@ -24,7 +26,7 @@ export interface OtpLoginFormProps {
   onBackAction?: () => void;
 }
 
-type Step = "method" | "otp-email" | "otp-code";
+type Step = "method" | "otp-email" | "otp-code" | "check-email";
 type PasswordMode = "signin" | "signup";
 
 // ─── Google Icon ───────────────────────────────────────────────────────────────
@@ -65,7 +67,30 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Resend cooldown: seconds remaining (0 = can resend)
+  const [resendCooldown, setResendCooldown] = useState(0);
+  // Track how many resends have happened to progressively increase cooldown
+  const [resendCount, setResendCount] = useState(0);
+
   const clearError = () => setError(null);
+
+  const formatCooldown = (s: number) =>
+    s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
+
+  // Cooldown doubles each attempt: 60s → 120s → 240s → 480s (capped at 8 min)
+  const getNextCooldown = (count: number) => Math.min(60 * Math.pow(2, count), 480);
+
+  const startResendCooldown = () => {
+    const seconds = getNextCooldown(resendCount);
+    setResendCooldown(seconds);
+    setResendCount((c) => c + 1);
+    const interval = setInterval(() => {
+      setResendCooldown((s) => {
+        if (s <= 1) { clearInterval(interval); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+  };
 
   // ── After auth: check profile and complete login ─────────────────────────
   const handlePostAuth = async (
@@ -155,15 +180,16 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
         if (!authUser) throw new Error("Account creation failed — please try again");
 
         // If there is no session, email confirmation is required.
-        // Send an OTP login code (type: 'email') so the user can verify
-        // using the existing code-entry screen instead of a dead-end link.
+        // Supabase already sent a confirmation email — don't send another
+        // (that triggers the "you can only request this after N seconds" rate limit).
         if (!data.session) {
-          await sendOtp({ email: pwEmail.trim() });
           setOtpEmail(pwEmail.trim());
           setPwPassword("");
           setPwConfirm("");
-          toast.success("Account created! Enter the verification code we just sent to your email.");
-          setStep("otp-code");
+          setOtp("");
+          startResendCooldown();
+          toast.success("Account created! Enter the code from your confirmation email.");
+          setStep("check-email");
           return;
         }
 
@@ -191,9 +217,69 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
       await sendOtp({ email: otpEmail.trim() });
       setStep("otp-code");
       setOtp("");
+      startResendCooldown();
       toast.success("Code sent! Check your email.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to send code";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── OTP: Resend login code ─────────────────────────────────────────────────
+  const handleResendOtp = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await sendOtp({ email: otpEmail.trim() });
+      setOtp("");
+      startResendCooldown();
+      toast.success("New code sent! Check your email.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to resend code";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Signup confirmation: Verify code ──────────────────────────────────────
+  const handleVerifySignupCode = async () => {
+    if (!otp.trim() || otp.length < 6) {
+      setError("Please enter the 6-digit code from your email");
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      const data = await verifySignupOtp({ email: otpEmail.trim(), token: otp.trim() });
+      const authUser = data.user;
+      const token = data.session?.access_token ?? null;
+      if (!authUser) throw new Error("Verification failed — please try again");
+      await handlePostAuth(authUser.id, authUser.email ?? otpEmail.trim(), token);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Invalid or expired code";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Signup confirmation: Resend confirmation email ────────────────────────
+  const handleResendSignupConfirmation = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await resendSignupConfirmation(otpEmail.trim());
+      setOtp("");
+      startResendCooldown();
+      toast.success("Confirmation email resent! Check your inbox.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to resend confirmation";
       setError(message);
       toast.error(message);
     } finally {
@@ -495,6 +581,78 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
           </motion.div>
         )}
 
+        {/* ── Check email (after password signup) — enter confirmation code ── */}
+        {step === "check-email" && (
+          <motion.div
+            key="check-email"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            <FormHeader
+              title="Confirm Your Email"
+              subtitle={
+                <>
+                  We sent a 6-digit code to <strong>{otpEmail}</strong>.
+                  Enter it below to activate your account.
+                </>
+              }
+            />
+
+            <div className="space-y-4">
+              <ErrorBox />
+
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-widest text-black/40 font-medium">
+                  Confirmation Code
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={otp}
+                  onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); clearError(); }}
+                  placeholder="000000"
+                  className="w-full text-center text-3xl tracking-[0.3em] py-4 border-2 border-black/10 focus:border-black focus:outline-none transition-all bg-white text-black"
+                  onKeyDown={(e) => e.key === "Enter" && !loading && handleVerifySignupCode()}
+                  disabled={loading}
+                  autoFocus
+                />
+              </div>
+
+              <button
+                onClick={handleVerifySignupCode}
+                disabled={otp.length < 6 || loading}
+                className="w-full bg-accent text-accent-foreground py-4 font-medium text-sm uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              >
+                {loading ? "Verifying..." : "Confirm Account"} <ChevronRight className="w-4 h-4" />
+              </button>
+
+              <div className="text-center">
+                {resendCooldown > 0 ? (
+                  <p className="text-xs text-black/30">Resend available in {formatCooldown(resendCooldown)}</p>
+                ) : (
+                  <button
+                    onClick={handleResendSignupConfirmation}
+                    disabled={loading}
+                    className="text-xs text-black/40 hover:text-black transition-colors underline underline-offset-2 disabled:opacity-40"
+                  >
+                    Didn&apos;t receive it? Resend code
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={() => { setStep("method"); clearError(); setOtp(""); }}
+                className="w-full text-xs text-black/40 hover:text-black transition-colors py-2"
+              >
+                ← Back to sign in
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {/* ── OTP: Enter code ─────────────────────────────────────────────── */}
         {step === "otp-code" && (
           <motion.div
@@ -537,6 +695,20 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
               >
                 {loading ? "Verifying..." : "Verify Code"} <ChevronRight className="w-4 h-4" />
               </button>
+
+              <div className="text-center">
+                {resendCooldown > 0 ? (
+                  <p className="text-xs text-black/30">Resend available in {formatCooldown(resendCooldown)}</p>
+                ) : (
+                  <button
+                    onClick={handleResendOtp}
+                    disabled={loading}
+                    className="text-xs text-black/40 hover:text-black transition-colors underline underline-offset-2 disabled:opacity-40"
+                  >
+                    Didn&apos;t receive it? Resend code
+                  </button>
+                )}
+              </div>
 
               <button
                 onClick={() => { setStep("otp-email"); clearError(); setOtp(""); }}

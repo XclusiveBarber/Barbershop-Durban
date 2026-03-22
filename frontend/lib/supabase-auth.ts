@@ -224,6 +224,42 @@ export async function signUpWithPassword(input: { email: string; password: strin
 }
 
 /**
+ * Verify the signup confirmation OTP sent by Supabase when a new account is created.
+ * Uses type 'signup' (distinct from 'email' which is used for OTP login).
+ */
+export async function verifySignupOtp(input: VerifyOtpInput) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: input.email,
+    token: input.token,
+    type: 'signup',
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Invalid or expired code');
+  }
+
+  return data;
+}
+
+/**
+ * Resend the signup confirmation email (for users who didn't receive it or whose code expired).
+ */
+export async function resendSignupConfirmation(email: string) {
+  const supabase = getSupabase();
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to resend confirmation email');
+  }
+
+  return { success: true };
+}
+
+/**
  * Sign out and clear session
  */
 export async function signOut() {

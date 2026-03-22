@@ -5,6 +5,7 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Preview,
   Row,
   Column,
@@ -26,15 +27,25 @@ export function RescheduleEmail({ newDate, newTime, services, barberName }: Resc
       <Preview>Your appointment has been rescheduled to {newDate} at {newTime}.</Preview>
       <Body style={main}>
         <Container style={container}>
+
+          {/* Header */}
           <Section style={header}>
-            <Heading style={logo}>Xclusive Barber</Heading>
+            <Img
+              src="https://xclusivebarber.co.za/logo.png"
+              alt="Xclusive Barber"
+              width="48"
+              height="48"
+              style={logoImg}
+            />
+            <Text style={logoText}>XCLUSIVE BARBER</Text>
           </Section>
 
+          {/* Content */}
           <Section style={content}>
-            <Heading as="h2" style={heading}>
-              Appointment Rescheduled
-            </Heading>
-            <Text style={paragraph}>Your appointment has been moved to a new time. Here are your updated details:</Text>
+            <Heading as="h2" style={heading}>Appointment Rescheduled</Heading>
+            <Text style={paragraph}>
+              Your appointment has been moved. Here are your updated details:
+            </Text>
 
             <Section style={detailsBox}>
               <Row style={detailRow}>
@@ -55,37 +66,128 @@ export function RescheduleEmail({ newDate, newTime, services, barberName }: Resc
               </Row>
             </Section>
 
-            <Text style={paragraph}>
-              Please note: this was your <strong>one permitted reschedule</strong>. Any further changes will require a new booking.
+            <Hr style={divider} />
+
+            <Text style={noteText}>
+              Please note: this was your <span style={noteHighlight}>one permitted reschedule</span>.
+              Any further changes will require a new booking.
             </Text>
           </Section>
 
-          <Hr style={divider} />
-
+          {/* Footer */}
           <Section style={footer}>
-            <Text style={footerText}>
-              <strong>The Xclusive Barber Team</strong>
-            </Text>
-            <Text style={footerMuted}>xclusivebarber.co.za</Text>
+            <Text style={footerText}>Davenport — All types of XCLUSIVE haircuts &amp; grooming.</Text>
+            <Text style={footerText}>&copy; 2026 Xclusive Barber. xclusivebarber.co.za</Text>
           </Section>
+
         </Container>
       </Body>
     </Html>
   );
 }
 
-const main = { backgroundColor: '#f6f6f6', fontFamily: 'Arial, sans-serif' };
-const container = { margin: '0 auto', padding: '20px 0', maxWidth: '600px' };
-const header = { backgroundColor: '#1a1a1a', borderRadius: '8px 8px 0 0', padding: '24px', textAlign: 'center' as const };
-const logo = { color: '#ffffff', fontSize: '24px', fontWeight: 'bold', margin: '0' };
-const content = { backgroundColor: '#ffffff', padding: '32px' };
-const heading = { color: '#1a1a1a', fontSize: '22px', fontWeight: 'bold', marginBottom: '16px' };
-const paragraph = { color: '#444444', fontSize: '15px', lineHeight: '1.6', margin: '0 0 12px' };
-const detailsBox = { backgroundColor: '#f9f9f9', borderRadius: '8px', padding: '16px 20px', margin: '20px 0' };
-const detailRow = { marginBottom: '8px' };
-const detailLabel = { color: '#888888', fontSize: '13px', fontWeight: 'bold' as const, textTransform: 'uppercase' as const, width: '40%' };
-const detailValue = { color: '#1a1a1a', fontSize: '14px' };
-const divider = { borderColor: '#e6e6e6', margin: '0' };
-const footer = { backgroundColor: '#ffffff', borderRadius: '0 0 8px 8px', padding: '24px 32px' };
-const footerText = { color: '#444444', fontSize: '14px', margin: '0 0 4px' };
-const footerMuted = { color: '#999999', fontSize: '13px', margin: '4px 0 0' };
+const main = {
+  backgroundColor: '#000000',
+  fontFamily: "'Montserrat', Arial, sans-serif",
+  margin: '0',
+  padding: '0',
+};
+
+const container = {
+  maxWidth: '600px',
+  margin: '0 auto',
+  backgroundColor: '#1a1a1a',
+  border: '1px solid #333333',
+};
+
+const header = {
+  backgroundColor: '#000000',
+  padding: '32px 20px',
+  textAlign: 'center' as const,
+};
+
+const logoImg = {
+  display: 'block',
+  margin: '0 auto 12px',
+};
+
+const logoText = {
+  color: '#ffffff',
+  fontSize: '22px',
+  fontWeight: '800',
+  letterSpacing: '3px',
+  textTransform: 'uppercase' as const,
+  margin: '0',
+};
+
+const content = {
+  padding: '40px',
+};
+
+const heading = {
+  color: '#ffffff',
+  fontSize: '22px',
+  fontWeight: '600',
+  margin: '0 0 20px',
+};
+
+const paragraph = {
+  color: '#aaaaaa',
+  fontSize: '15px',
+  lineHeight: '1.6',
+  margin: '0 0 14px',
+};
+
+const detailsBox = {
+  backgroundColor: '#000000',
+  border: '1px solid #333333',
+  padding: '20px 24px',
+  margin: '24px 0',
+};
+
+const detailRow = {
+  marginBottom: '10px',
+};
+
+const detailLabel = {
+  color: '#9b1c1c',
+  fontSize: '11px',
+  fontWeight: 'bold' as const,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '1px',
+  width: '40%',
+};
+
+const detailValue = {
+  color: '#cccccc',
+  fontSize: '14px',
+};
+
+const divider = {
+  borderColor: '#333333',
+  margin: '0 0 20px',
+};
+
+const noteText = {
+  color: '#666666',
+  fontSize: '13px',
+  lineHeight: '1.5',
+  margin: '0',
+};
+
+const noteHighlight = {
+  color: '#9b1c1c',
+  fontWeight: 'bold' as const,
+};
+
+const footer = {
+  borderTop: '1px solid #333333',
+  padding: '24px 40px',
+  textAlign: 'center' as const,
+};
+
+const footerText = {
+  color: '#666666',
+  fontSize: '12px',
+  margin: '4px 0',
+};

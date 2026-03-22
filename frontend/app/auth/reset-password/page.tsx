@@ -41,7 +41,7 @@ function ResetPasswordContent() {
 
     // Supabase fires PASSWORD_RECOVERY when it detects a valid recovery token
     // in the URL fragment. If the token is expired/invalid it fires SIGNED_OUT.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
       if (event === "PASSWORD_RECOVERY") {
         setPageState("ready");
       } else if (event === "SIGNED_OUT") {

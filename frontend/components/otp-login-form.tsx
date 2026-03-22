@@ -69,11 +69,21 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
 
   // Resend cooldown: seconds remaining (0 = can resend)
   const [resendCooldown, setResendCooldown] = useState(0);
+  // Track how many resends have happened to progressively increase cooldown
+  const [resendCount, setResendCount] = useState(0);
 
   const clearError = () => setError(null);
 
+  const formatCooldown = (s: number) =>
+    s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
+
+  // Cooldown doubles each attempt: 60s → 120s → 240s → 480s (capped at 8 min)
+  const getNextCooldown = (count: number) => Math.min(60 * Math.pow(2, count), 480);
+
   const startResendCooldown = () => {
-    setResendCooldown(60);
+    const seconds = getNextCooldown(resendCount);
+    setResendCooldown(seconds);
+    setResendCount((c) => c + 1);
     const interval = setInterval(() => {
       setResendCooldown((s) => {
         if (s <= 1) { clearInterval(interval); return 0; }
@@ -621,7 +631,7 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
 
               <div className="text-center">
                 {resendCooldown > 0 ? (
-                  <p className="text-xs text-black/30">Resend available in {resendCooldown}s</p>
+                  <p className="text-xs text-black/30">Resend available in {formatCooldown(resendCooldown)}</p>
                 ) : (
                   <button
                     onClick={handleResendSignupConfirmation}
@@ -688,7 +698,7 @@ export function OtpLoginForm({ onComplete, onBackAction }: OtpLoginFormProps) {
 
               <div className="text-center">
                 {resendCooldown > 0 ? (
-                  <p className="text-xs text-black/30">Resend available in {resendCooldown}s</p>
+                  <p className="text-xs text-black/30">Resend available in {formatCooldown(resendCooldown)}</p>
                 ) : (
                   <button
                     onClick={handleResendOtp}

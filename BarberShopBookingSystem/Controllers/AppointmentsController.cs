@@ -18,24 +18,6 @@ namespace BarberShopBookingSystem.Controllers
         private readonly ApplicationDbContext _context;
         public AppointmentsController(ApplicationDbContext context) => _context = context;
 
-        // Helper method to safely get SAST time
-        // Helper method to safely get SAST time on BOTH Windows and Linux servers!
-        private DateTime GetSASTTime()
-        {
-            try
-            {
-                // Try Windows format (Local Development)
-                TimeZoneInfo saTimeZone = TimeZoneInfo.FindSystemTimeZoneById("South Africa Standard Time");
-                return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, saTimeZone);
-            }
-            catch (TimeZoneNotFoundException)
-            {
-                // Fallback to Linux/IANA format (Production Servers like Azure)
-                TimeZoneInfo saTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Africa/Johannesburg");
-                return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, saTimeZone);
-            }
-        }
-
         // GET /api/appointments/my-appointments
         [HttpGet("my-appointments")]
         public async Task<IActionResult> GetMyAppointments()
@@ -98,7 +80,8 @@ namespace BarberShopBookingSystem.Controllers
             if (userProfile == null || (userProfile.Role != "admin" && userProfile.Role != "barber"))
                 return Forbid();
 
-            var localTimeNow = GetSASTTime();
+            // 🚨 REVERTED TO ORIGINAL UTC OFFSET
+            var localTimeNow = DateTime.UtcNow.AddHours(2);
             var today = DateOnly.FromDateTime(localTimeNow);
 
             bool needsSave = false;
@@ -122,7 +105,6 @@ namespace BarberShopBookingSystem.Controllers
             {
                 if (DateTime.TryParse($"{appt.AppointmentDate:yyyy-MM-dd} {appt.TimeSlot}", out DateTime apptTime))
                 {
-                    // 🚨 CHANGED TO 10 MINUTES
                     if (apptTime.AddMinutes(10) < localTimeNow)
                     {
                         appt.Status = "no-show";
@@ -228,14 +210,15 @@ namespace BarberShopBookingSystem.Controllers
                 .ToListAsync();
 
             var availableSlots = new List<string>();
-            var localTimeNow = GetSASTTime();
+
+            // 🚨 REVERTED TO ORIGINAL UTC OFFSET
+            var localTimeNow = DateTime.UtcNow.AddHours(2);
             var isToday = targetDate == DateOnly.FromDateTime(localTimeNow);
 
             foreach (var slot in standardSlots)
             {
                 if (isToday && DateTime.TryParse($"{date} {slot}", out DateTime slotTime))
                 {
-                    // 🚨 CHANGED TO 10 MINUTES
                     if (slotTime < localTimeNow.AddMinutes(10)) continue;
                 }
 
@@ -270,9 +253,9 @@ namespace BarberShopBookingSystem.Controllers
                 if (requestedTime.Year == 1)
                     return BadRequest(new { error = "System error: The date was missing or incorrectly formatted." });
 
-                var localTimeNow = GetSASTTime();
+                // 🚨 REVERTED TO ORIGINAL UTC OFFSET
+                var localTimeNow = DateTime.UtcNow.AddHours(2);
 
-                // 🚨 CHANGED TO 10 MINUTES
                 if (requestedTime < localTimeNow.AddMinutes(10))
                     return BadRequest(new { error = "Appointments must be booked at least 10 minutes in advance." });
             }
@@ -289,7 +272,6 @@ namespace BarberShopBookingSystem.Controllers
             if (selectedHaircut == null)
                 return NotFound(new { error = "Selected service could not be found." });
 
-            // 🚨 SECURITY FIX: Ignore dto.DiscountAmount and use real price
             decimal finalPrice = selectedHaircut.Price;
             int totalDuration = selectedHaircut.DurationMinutes;
 
@@ -365,7 +347,8 @@ namespace BarberShopBookingSystem.Controllers
 
             if (DateTime.TryParse($"{appointment.AppointmentDate:yyyy-MM-dd} {appointment.TimeSlot}", out DateTime scheduledTime))
             {
-                var localTimeNow = GetSASTTime();
+                // 🚨 REVERTED TO ORIGINAL UTC OFFSET
+                var localTimeNow = DateTime.UtcNow.AddHours(2);
                 var hoursUntilAppointment = (scheduledTime - localTimeNow).TotalHours;
 
                 if (hoursUntilAppointment > 0 && hoursUntilAppointment <= 2)
@@ -430,7 +413,8 @@ namespace BarberShopBookingSystem.Controllers
 
             if (DateTime.TryParse($"{appointment.AppointmentDate.ToString("yyyy-MM-dd")} {appointment.TimeSlot}", out DateTime currentScheduledTime))
             {
-                var localTimeNow = GetSASTTime();
+                // 🚨 REVERTED TO ORIGINAL UTC OFFSET
+                var localTimeNow = DateTime.UtcNow.AddHours(2);
                 var timeUntilAppointment = currentScheduledTime - localTimeNow;
                 if (timeUntilAppointment.TotalHours < 2 && timeUntilAppointment.TotalHours > 0)
                     return BadRequest("Policy: Rescheduling requires at least 2 hours' notice.");
@@ -513,7 +497,8 @@ namespace BarberShopBookingSystem.Controllers
             if (!DateTime.TryParse($"{appointment.AppointmentDate:yyyy-MM-dd} {appointment.TimeSlot}", out DateTime scheduledTime))
                 return BadRequest(new { error = "System error: Could not read appointment time." });
 
-            var localTimeNow = GetSASTTime();
+            // 🚨 REVERTED TO ORIGINAL UTC OFFSET
+            var localTimeNow = DateTime.UtcNow.AddHours(2);
 
             if (localTimeNow < scheduledTime)
                 return BadRequest(new { error = "You cannot mark an appointment as late before its scheduled time." });
@@ -571,7 +556,6 @@ namespace BarberShopBookingSystem.Controllers
         [JsonPropertyName("timeSlot")]
         public string TimeSlot { get; set; } = string.Empty;
 
-        // Left this property so the JSON parser doesn't break, but the backend ignores it entirely for security!
         [JsonPropertyName("discountAmount")]
         public decimal DiscountAmount { get; set; }
 

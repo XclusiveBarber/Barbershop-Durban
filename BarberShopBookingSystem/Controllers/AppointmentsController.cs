@@ -19,10 +19,21 @@ namespace BarberShopBookingSystem.Controllers
         public AppointmentsController(ApplicationDbContext context) => _context = context;
 
         // Helper method to safely get SAST time
+        // Helper method to safely get SAST time on BOTH Windows and Linux servers!
         private DateTime GetSASTTime()
         {
-            TimeZoneInfo saTimeZone = TimeZoneInfo.FindSystemTimeZoneById("South Africa Standard Time");
-            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, saTimeZone);
+            try
+            {
+                // Try Windows format (Local Development)
+                TimeZoneInfo saTimeZone = TimeZoneInfo.FindSystemTimeZoneById("South Africa Standard Time");
+                return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, saTimeZone);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                // Fallback to Linux/IANA format (Production Servers like Azure)
+                TimeZoneInfo saTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Africa/Johannesburg");
+                return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, saTimeZone);
+            }
         }
 
         // GET /api/appointments/my-appointments

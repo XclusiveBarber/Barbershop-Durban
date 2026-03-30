@@ -30,11 +30,14 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
   const [selectedTab, setSelectedTab] = useState<'schedule' | 'analytics' | 'services'>('schedule');
 
   const fetchAppointments = useCallback(async () => {
-    setLoading(true);
     try {
+      let url = '/api/appointments/all';
+      if (view === 'day') {
+        url += `?date=${format(currentDate, 'yyyy-MM-dd')}`;
+      }
       const headers: Record<string, string> = {};
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-      const response = await fetch('/api/appointments/all', { headers });
+      const response = await fetch(url, { headers });
       const data = await response.json();
       if (response.ok) {
         setAppointments(Array.isArray(data) ? data : (data.appointments ?? []));
@@ -44,21 +47,14 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [currentDate, view, accessToken]);
 
-  // Fetch on mount, tab switch, and periodically to keep data fresh
+  // Refetch when date/view changes OR when switching back to schedule tab
   useEffect(() => {
     if (selectedTab === 'schedule') {
       fetchAppointments();
     }
-  }, [selectedTab, fetchAppointments]);
-
-  // Auto-refresh every 30 seconds when on schedule tab
-  useEffect(() => {
-    if (selectedTab !== 'schedule') return;
-    const interval = setInterval(fetchAppointments, 30000);
-    return () => clearInterval(interval);
-  }, [selectedTab, fetchAppointments]);
+  }, [currentDate, view, selectedTab, fetchAppointments]);
 
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {
@@ -97,7 +93,7 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
 
   const getWeekDays = () => {
     const start = startOfWeek(currentDate, { weekStartsOn: 1 });
-    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+    return Array.from({ length: 5 }, (_, i) => addDays(start, i));
   };
 
   const todayAppointments = getDayAppointments(new Date());
@@ -327,7 +323,12 @@ function AnalyticsTab() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('week');
 
-  const fetchAnalytics = useCallback(async () => {
+  useEffect(() => {
+    fetchAnalytics();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
+
+  const fetchAnalytics = async () => {
     setLoading(true);
     try {
       const headers: Record<string, string> = {};
@@ -340,11 +341,7 @@ function AnalyticsTab() {
     } finally {
       setLoading(false);
     }
-  }, [period, accessToken]);
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics]);
+  };
 
   if (loading) {
     return (

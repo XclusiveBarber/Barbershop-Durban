@@ -29,25 +29,36 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTab, setSelectedTab] = useState<'schedule' | 'analytics' | 'services'>('schedule');
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
+    setLoading(true);
     try {
       const headers: Record<string, string> = {};
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
       const response = await fetch('/api/appointments/all', { headers });
       const data = await response.json();
-      if (response.ok) setAppointments(Array.isArray(data) ? data : (data.appointments ?? []));
-      else toast.error('Failed to load appointments');
+      if (response.ok) {
+        setAppointments(Array.isArray(data) ? data : (data.appointments ?? []));
+      }
     } catch {
-      toast.error('Failed to load appointments');
+      // silently handle
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchAppointments();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
+
+  // Fetch on mount, tab switch, and periodically to keep data fresh
+  useEffect(() => {
+    if (selectedTab === 'schedule') {
+      fetchAppointments();
+    }
+  }, [selectedTab, fetchAppointments]);
+
+  // Auto-refresh every 30 seconds when on schedule tab
+  useEffect(() => {
+    if (selectedTab !== 'schedule') return;
+    const interval = setInterval(fetchAppointments, 30000);
+    return () => clearInterval(interval);
+  }, [selectedTab, fetchAppointments]);
 
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {

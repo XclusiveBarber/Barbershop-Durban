@@ -80,50 +80,7 @@ namespace BarberShopBookingSystem.Controllers
             if (userProfile == null || (userProfile.Role != "admin" && userProfile.Role != "barber"))
                 return Forbid();
 
-            // 🚨 REVERTED TO ORIGINAL UTC OFFSET
-            var localTimeNow = DateTime.UtcNow.AddHours(2);
-            var today = DateOnly.FromDateTime(localTimeNow);
-
-            bool needsSave = false;
-
-            var expiryTime = localTimeNow.AddMinutes(-10);
-            var abandonedBookings = await _context.Appointments
-                .Where(a => a.Status == "pending" && a.PaymentStatus == "unpaid" && a.CreatedAt < expiryTime)
-                .ToListAsync();
-
-            foreach (var abandoned in abandonedBookings)
-            {
-                abandoned.Status = "cancelled";
-                needsSave = true;
-            }
-
-            var staleCheck = await _context.Appointments
-                .Where(a => a.Status == "pending" && a.AppointmentDate <= today)
-                .ToListAsync();
-
-            foreach (var appt in staleCheck)
-            {
-                if (DateTime.TryParse($"{appt.AppointmentDate:yyyy-MM-dd} {appt.TimeSlot}", out DateTime apptTime))
-                {
-                    if (apptTime.AddMinutes(10) < localTimeNow)
-                    {
-                        appt.Status = "no-show";
-                        needsSave = true;
-                    }
-                }
-            }
-
-            if (needsSave)
-            {
-                try
-                {
-                    await _context.SaveChangesAsync();
-                }
-                catch (Exception)
-                {
-                    _context.ChangeTracker.Clear();
-                }
-            }
+            // Abandoned booking cleanup is handled by AbandonedBookingCleanupService (background, every 2 min)
 
             var query = _context.Appointments.AsQueryable();
 

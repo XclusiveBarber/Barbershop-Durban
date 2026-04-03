@@ -199,7 +199,19 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
         const data = await res.json();
         // C# returns a plain string array e.g. ["09:00", "10:00"]
         // It handles day-of-week hours, barber capacity, and past-slot filtering
-        setAvailableSlots(Array.isArray(data) ? data : []);
+        let slots: string[] = Array.isArray(data) ? data : [];
+
+        // ── TEMPORARY EASTER WEEKEND OVERRIDE (remove after 2026-04-06) ──────
+        // Fri 2026-04-03 & Sat 2026-04-04: close at 13:00 (last slot 12:00)
+        // Sun 2026-04-05: closed
+        if (dateStr === "2026-04-05") {
+          slots = [];
+        } else if (dateStr === "2026-04-03" || dateStr === "2026-04-04") {
+          slots = slots.filter((t) => t < "13:00");
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
+        setAvailableSlots(slots);
       } catch (error) {
         console.error("Failed to fetch availability:", error);
         setAvailableSlots([]);

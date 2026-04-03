@@ -41,9 +41,14 @@ namespace BarberShopBookingSystem.Controllers
             if (totalBarbers == 0)
                 return Ok(new { availableSlots = Array.Empty<string>() });
 
-            // Load all non-cancelled appointments for the requested date
+            // Load appointments that actually hold a slot for the requested date.
+            // Exclude cancelled, and also exclude abandoned pending bookings
+            // (unpaid for 10+ min) so they don't block slots between cleanup runs.
+            var expiryTime = DateTime.UtcNow.AddHours(2).AddMinutes(-10);
             var bookedSlots = await _context.Appointments
-                .Where(a => a.AppointmentDate == targetDate && a.Status != "cancelled")
+                .Where(a => a.AppointmentDate == targetDate
+                    && a.Status != "cancelled"
+                    && !(a.Status == "pending" && a.PaymentStatus == "unpaid" && a.CreatedAt < expiryTime))
                 .GroupBy(a => a.TimeSlot)
                 .Select(g => new { TimeSlot = g.Key, Count = g.Count() })
                 .ToListAsync();

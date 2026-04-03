@@ -79,6 +79,9 @@ builder.Services.AddCors(options =>
 builder.Services.AddHttpClient<IEmailService, EmailService>();
 // -----------------------------------
 
+// Background cleanup: cancels pending unpaid bookings after 10 minutes
+builder.Services.AddHostedService<BarberShopBookingSystem.Services.AbandonedBookingCleanupService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

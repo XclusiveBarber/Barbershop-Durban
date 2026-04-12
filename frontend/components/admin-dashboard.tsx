@@ -56,26 +56,6 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
     }
   }, [currentDate, view, selectedTab, fetchAppointments]);
 
-  const handleStatusChange = async (id: number, newStatus: string) => {
-    try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-      const response = await fetch(`/api/appointments/${id}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ status: newStatus })
-      });
-      if (response.ok) {
-        toast.success('Appointment updated');
-        fetchAppointments();
-      } else {
-        toast.error('Failed to update appointment');
-      }
-    } catch {
-      toast.error('Failed to update appointment');
-    }
-  };
-
   const handleLogout = () => {
     logout();
     router.push('/');
@@ -88,7 +68,7 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
 
   const getDayAppointments = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return appointments.filter(apt => apt.appointment_date === dateStr);
+    return appointments.filter(apt => apt.appointment_date === dateStr && apt.status !== 'cancelled');
   };
 
   const getWeekDays = () => {
@@ -248,16 +228,13 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
                                     <p className="text-xs text-black/40">with {apt.barber_name}</p>
                                     <p className="text-xs font-medium text-black/60 mt-1">{apt.service_price}</p>
                                   </div>
-                                  <select
-                                    value={apt.status}
-                                    onChange={(e) => handleStatusChange(apt.id, e.target.value)}
-                                    className="text-xs bg-white border-2 border-black/10 text-black px-2 py-1 focus:border-accent focus:outline-none"
-                                  >
-                                    <option value="pending">Pending</option>
-                                    <option value="confirmed">Confirmed</option>
-                                    <option value="completed">Completed</option>
-                                    <option value="cancelled">Cancelled</option>
-                                  </select>
+                                  <span className={`text-[10px] uppercase tracking-widest px-2.5 py-1 font-semibold ${
+                                    apt.status === 'completed' ? 'bg-green-50 text-green-700' :
+                                    apt.status === 'confirmed' ? 'bg-blue-50 text-blue-700' :
+                                    'bg-amber-50 text-amber-700'
+                                  }`}>
+                                    {apt.status}
+                                  </span>
                                 </div>
                               </div>
                             ))

@@ -82,6 +82,8 @@ builder.Services.AddHttpClient<IEmailService, EmailService>();
 // Background cleanup: cancels pending unpaid bookings after 10 minutes
 builder.Services.AddHostedService<BarberShopBookingSystem.Services.AbandonedBookingCleanupService>();
 
+builder.WebHost.UseUrls($"http://0.0.0.0:{Environment.GetEnvironmentVariable("PORT") ?? "10000"}");
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

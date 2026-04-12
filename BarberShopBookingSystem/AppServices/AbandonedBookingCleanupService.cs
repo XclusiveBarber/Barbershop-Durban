@@ -45,19 +45,16 @@ namespace BarberShopBookingSystem.Services
             var localTimeNow = DateTime.UtcNow.AddHours(2);
             var expiryTime = localTimeNow - ExpiryThreshold;
 
-            var abandoned = await context.Appointments
+            // This executes a single SQL query directly on the database:
+            // UPDATE appointments SET status = 'cancelled' WHERE ...
+            var cancelledCount = await context.Appointments
                 .Where(a => a.Status == "pending" && a.PaymentStatus == "unpaid" && a.CreatedAt < expiryTime)
-                .ToListAsync();
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.Status, "cancelled"));
 
-            if (abandoned.Count == 0) return;
-
-            foreach (var booking in abandoned)
+            if (cancelledCount > 0)
             {
-                booking.Status = "cancelled";
+                _logger.LogInformation("Cancelled {Count} abandoned pending bookings", cancelledCount);
             }
-
-            await context.SaveChangesAsync();
-            _logger.LogInformation("Cancelled {Count} abandoned pending bookings", abandoned.Count);
         }
     }
 }

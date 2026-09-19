@@ -665,7 +665,7 @@ export function BookingSystem({ hideTitle = false }: { hideTitle?: boolean }) {
                   <p className="text-black/55 max-w-sm mx-auto text-sm leading-relaxed">
                     {`Thanks, ${user?.name ?? ""}. Your ${selectedService?.name ?? "service"} on ${
                       selectedDate ? format(selectedDate, "EEE, MMM d") : ""
-                    } at ${selectedTime} is confirmed. A barber will be assigned to you.`}
+                    } at ${selectedTime} is confirmed.`}
                   </p>
 
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
